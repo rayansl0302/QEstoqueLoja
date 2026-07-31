@@ -24,7 +24,7 @@ Configuracao::Configuracao(QWidget *parent)
     ui->Lbl_CertificadoAcPath->setVisible(false);
     ui->LEdit_CESTProd->setVisible(false);
     ui->Lbl_CestProd->setVisible(false);
-
+    ui->lbl_certac_txt->setVisible(false);
 
 
     ConfigDTO configDTO;
