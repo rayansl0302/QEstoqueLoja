@@ -1,5 +1,7 @@
 #include "escposprinter_service.h"
 #include <QProcess>
+#include <QLocale>
+#include "../util/escposcomandos.h"
 
 EscPosPrinter_service::EscPosPrinter_service(QObject *parent)
 : QObject(parent)
@@ -11,18 +13,18 @@ bool EscPosPrinter_service::imprimirTeste(const QString &printerName, QString *e
 {
     QByteArray dados;
 
-    dados += inicializar();
+    dados += EscPosComandos::inicializar();
 
-    dados += alinharCentro();
+    dados += EscPosComandos::alinharCentro();
     dados += "TESTE ESC/POS\n";
     dados += "ELGIN I9\n\n";
 
-    dados += alinharEsquerda();
+    dados += EscPosComandos::alinharEsquerda();
     dados += "Produto Teste\n";
     dados += "Preco: R$ 10,00\n\n";
 
     dados += "\n\n\n\n";
-    dados += cortar();
+    dados += EscPosComandos::cortar();
 
     return imprimirRaw(printerName, dados, erro);
 }
@@ -69,22 +71,61 @@ bool EscPosPrinter_service::imprimirRaw(const QString &printerName,
 #endif
 }
 
-QByteArray EscPosPrinter_service::inicializar() const
+
+bool EscPosPrinter_service::imprimirEtiquetas(
+    const QString &printerName,
+    int quantidade,
+    const QImage &barcodeImage,
+    const QString &descricao,
+    double preco,
+    QString *erro)
 {
-    return QByteArray("\x1B\x40", 2);
+    if (barcodeImage.isNull())
+    {
+        if (erro)
+            *erro = "Imagem de código de barras inválida";
+
+        return false;
+    }
+
+    QLocale pt(QLocale::Portuguese, QLocale::Brazil);
+
+    QByteArray dados;
+
+    dados += EscPosComandos::inicializar();
+
+    for (int i = 0; i < quantidade; ++i)
+    {
+        dados += EscPosComandos::alinharEsquerda();
+
+        dados += descricao.toLatin1();
+        dados += "\n";
+
+        dados += EscPosComandos::bold(true);
+
+        QString texto = QString("Preco: R$ %1")
+                            .arg(pt.toString(preco,'f',2));
+
+        dados += texto.toLatin1();
+
+        dados += "\n";
+
+        dados += EscPosComandos::bold(false);
+
+        // aqui entra o código de barras
+        dados += EscPosComandos::imagem(barcodeImage);
+
+        dados += "\n";
+
+        dados += EscPosComandos::feed(4);
+
+        if(i != quantidade-1)
+            dados += EscPosComandos::cortar();
+    }
+
+    dados += EscPosComandos::cortar();
+
+    return imprimirRaw(printerName,dados,erro);
 }
 
-QByteArray EscPosPrinter_service::cortar() const
-{
-    return QByteArray("\x1D\x56\x00", 3);
-}
 
-QByteArray EscPosPrinter_service::alinharCentro() const
-{
-    return QByteArray("\x1B\x61\x01", 3);
-}
-
-QByteArray EscPosPrinter_service::alinharEsquerda() const
-{
-    return QByteArray("\x1B\x61\x00", 3);
-}

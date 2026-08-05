@@ -2,6 +2,7 @@
 #define ESCPOSPRINTER_SERVICE_H
 #include <QObject>
 #include <QByteArray>
+#include <QImage>
 
 class EscPosPrinter_service : public QObject
 {
@@ -13,11 +14,8 @@ public:
     bool imprimirRaw(const QString &printerName,
                      const QByteArray &dados,
                      QString *erro = nullptr);
+    bool imprimirEtiquetas(const QString &printerName, int quantidade, const QImage &barcodeImage, const QString &descricao, double preco, QString *erro);
 private:
-    QByteArray inicializar() const;
-    QByteArray cortar() const;
-    QByteArray alinharCentro() const;
-    QByteArray alinharEsquerda() const;
 signals:
 };
 

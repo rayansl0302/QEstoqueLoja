@@ -50,6 +50,7 @@
 #include "inutilizacaodialog.h"
 #include "cartacorrecaojanela.h"
 #include "services/export_service.h"
+#include "services/escposprinter_service.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -369,11 +370,13 @@ void MainWindow::imprimirEtiqueta3(){
         return;
     }
 
-    if (!PrintUtil::imprimirEtiquetas(this, 3, barcode, descVariant.toString(), precoVariant.toDouble(), &erro)) {
-        QMessageBox::warning(this, "Erro", erro);
+
+    EscPosPrinter_service printer;
+
+    if(printer.imprimirEtiquetas("ELGIN-I9", 1, barcode, descVariant.toString(),precoVariant.toDouble(), &erro)){
+        qDebug() << erro;
+
     }
-
-
 }
 
 
