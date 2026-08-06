@@ -16,14 +16,17 @@ Recibo_service::Recibo_service(QObject *parent)
 
 void Recibo_service::imprimirReciboVenda(qlonglong idvenda){
 
-    QPrinter printer;
+    ConfigDTO configs = confServ.carregarTudo();
 
+    QPrinter printer;
+    printer.setPrinterName(configs.impressoraNomeDispositivo);
     printer.setPageSize(QPageSize(QSizeF(80, 2000), QPageSize::Millimeter));// Tamanho do papel
     // printer.pageLayout().setPageSize(customPageSize);
     printer.setFullPage(true); // Utilizar toda a página        QPrintDialog dialog(&printer, this);
 
-    QPrintDialog dialog(&printer);
-    if(dialog.exec() == QDialog::Rejected) return;
+    //imprimir com/sem dialog
+    // QPrintDialog dialog(&printer);
+    // if(dialog.exec() == QDialog::Rejected) return;
 
     QPainter painter;
     painter.begin(&printer);
@@ -33,7 +36,7 @@ void Recibo_service::imprimirReciboVenda(qlonglong idvenda){
     painter.setFont(font);
 
 
-    ConfigDTO configs = confServ.carregarTudo();
+
 
     VendasDTO venda = vendaServ.getVenda(idvenda);
 
