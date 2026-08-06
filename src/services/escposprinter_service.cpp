@@ -3,6 +3,11 @@
 #include <QLocale>
 #include "../util/escposcomandos.h"
 
+#ifdef Q_OS_WIN
+#include <windows.h>
+#include <winspool.h>
+#endif
+
 EscPosPrinter_service::EscPosPrinter_service(QObject *parent)
 : QObject(parent)
 {
@@ -29,21 +34,22 @@ bool EscPosPrinter_service::imprimirTeste(const QString &printerName, QString *e
     return imprimirRaw(printerName, dados, erro);
 }
 
-bool EscPosPrinter_service::imprimirRaw(const QString &printerName,
-                                       const QByteArray &dados,
-                                       QString *erro)
+bool EscPosPrinter_service::imprimirRaw(
+    const QString &printerName,
+    const QByteArray &dados,
+    QString *erro)
 {
+
 #ifdef Q_OS_LINUX
 
     QProcess process;
 
-    process.start("lp", { "-d", printerName, "-o","raw"});
+    process.start("lp", {"-d", printerName, "-o", "raw"});
 
     if (!process.waitForStarted())
     {
         if (erro)
             *erro = "Não foi possível iniciar o comando lp.";
-
         return false;
     }
 
@@ -54,13 +60,62 @@ bool EscPosPrinter_service::imprimirRaw(const QString &printerName,
     {
         if (erro)
             *erro = "Falha ao enviar dados para a impressora.";
-
         return false;
     }
 
     return process.exitCode() == 0;
 
+#elif defined(Q_OS_WIN)
+
+
+    HANDLE hPrinter = nullptr;
+
+    if (!OpenPrinterW((LPWSTR)printerName.utf16(), &hPrinter, nullptr))
+    {
+        if (erro)
+            *erro = "Não foi possível abrir a impressora.";
+        return false;
+    }
+
+    DOC_INFO_1W docInfo;
+    docInfo.pDocName = (LPWSTR)L"ESC/POS";
+    docInfo.pOutputFile = nullptr;
+    docInfo.pDatatype = (LPWSTR)L"RAW";
+
+    if (!StartDocPrinterW(hPrinter, 1, (LPBYTE)&docInfo))
+    {
+        ClosePrinter(hPrinter);
+
+        if (erro)
+            *erro = "Erro ao iniciar documento.";
+        return false;
+    }
+
+    StartPagePrinter(hPrinter);
+
+    DWORD written = 0;
+
+    BOOL ok = WritePrinter(
+        hPrinter,
+        (LPVOID)dados.constData(),
+        dados.size(),
+        &written);
+
+    EndPagePrinter(hPrinter);
+    EndDocPrinter(hPrinter);
+    ClosePrinter(hPrinter);
+
+    if (!ok || written != (DWORD)dados.size())
+    {
+        if (erro)
+            *erro = "Erro ao enviar dados RAW.";
+        return false;
+    }
+
+    return true;
+
 #else
+
     Q_UNUSED(printerName)
     Q_UNUSED(dados)
 
@@ -68,6 +123,7 @@ bool EscPosPrinter_service::imprimirRaw(const QString &printerName,
         *erro = "Sistema operacional ainda não suportado.";
 
     return false;
+
 #endif
 }
 

@@ -174,6 +174,7 @@ elseif(WIN32)
         quazip1-qt6
         QtRPT
         zlib_dll
+        Winspool
     )
 endif()
 

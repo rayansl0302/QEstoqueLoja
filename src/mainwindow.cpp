@@ -373,7 +373,7 @@ void MainWindow::imprimirEtiqueta3(){
 
     EscPosPrinter_service printer;
 
-    if(printer.imprimirEtiquetas("ELGIN-I9", 1, barcode, descVariant.toString(),precoVariant.toDouble(), &erro)){
+    if(!printer.imprimirEtiquetas("ELGIN i9(USB)", 1, barcode, descVariant.toString(),precoVariant.toDouble(), &erro)){
         qDebug() << erro;
 
     }
