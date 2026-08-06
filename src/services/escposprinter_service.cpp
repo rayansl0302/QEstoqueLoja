@@ -30,14 +30,13 @@ bool EscPosPrinter_service::imprimirTeste(const QString &printerName, QString *e
 
     dados += "\n\n\n\n";
     dados += EscPosComandos::cortar();
-
-    return imprimirRaw(printerName, dados, erro);
+    auto r1 = imprimirRaw(printerName, dados);
+    return r1.ok;
 }
 
-bool EscPosPrinter_service::imprimirRaw(
+EscPosPrinter_service::Resultado EscPosPrinter_service::imprimirRaw(
     const QString &printerName,
-    const QByteArray &dados,
-    QString *erro)
+    const QByteArray &dados)
 {
 
 #ifdef Q_OS_LINUX
@@ -47,23 +46,19 @@ bool EscPosPrinter_service::imprimirRaw(
     process.start("lp", {"-d", printerName, "-o", "raw"});
 
     if (!process.waitForStarted())
-    {
-        if (erro)
-            *erro = "Não foi possível iniciar o comando lp.";
-        return false;
-    }
+        return {false, "Não foi possível iniciar o comando lp."};
 
     process.write(dados);
     process.closeWriteChannel();
 
     if (!process.waitForFinished())
     {
-        if (erro)
-            *erro = "Falha ao enviar dados para a impressora.";
-        return false;
+        return {false, "Falha ao enviar dados para a impressora."};
     }
+    if (process.exitCode() != 0)
+        return {false, process.readAllStandardError()};
 
-    return process.exitCode() == 0;
+    return {true, ""};
 
 #elif defined(Q_OS_WIN)
 
@@ -72,9 +67,7 @@ bool EscPosPrinter_service::imprimirRaw(
 
     if (!OpenPrinterW((LPWSTR)printerName.utf16(), &hPrinter, nullptr))
     {
-        if (erro)
-            *erro = "Não foi possível abrir a impressora.";
-        return false;
+        return {false, "Não foi possível abrir a impressora."};
     }
 
     DOC_INFO_1W docInfo;
@@ -86,9 +79,7 @@ bool EscPosPrinter_service::imprimirRaw(
     {
         ClosePrinter(hPrinter);
 
-        if (erro)
-            *erro = "Erro ao iniciar documento.";
-        return false;
+        return {false, "Erro ao iniciar documento."};
     }
 
     StartPagePrinter(hPrinter);
@@ -107,47 +98,37 @@ bool EscPosPrinter_service::imprimirRaw(
 
     if (!ok || written != (DWORD)dados.size())
     {
-        if (erro)
-            *erro = "Erro ao enviar dados RAW.";
-        return false;
+        return {false, "Erro ao enviar dados RAW."};
+
     }
 
-    return true;
+    return {true, ""};
 
 #else
 
     Q_UNUSED(printerName)
     Q_UNUSED(dados)
-
-    if (erro)
-        *erro = "Sistema operacional ainda não suportado.";
-
-    return false;
+    return {false, "Sistema operacional ainda não suportado."};
 
 #endif
 }
 
 
-bool EscPosPrinter_service::imprimirEtiquetas(
+EscPosPrinter_service::Resultado EscPosPrinter_service::imprimirEtiquetas(
     const QString &printerName,
     int quantidade,
     const QImage &barcodeImage,
     const QString &descricao,
-    double preco,
-    QString *erro)
+    double preco)
 {
     if (barcodeImage.isNull())
     {
-        if (erro)
-            *erro = "Imagem de código de barras inválida";
-
-        return false;
+        return {false, "Imagem de código de barras inválida"};
     }
 
     QLocale pt(QLocale::Portuguese, QLocale::Brazil);
 
     QByteArray dados;
-
     dados += EscPosComandos::inicializar();
 
     for (int i = 0; i < quantidade; ++i)
@@ -163,25 +144,23 @@ bool EscPosPrinter_service::imprimirEtiquetas(
                             .arg(pt.toString(preco,'f',2));
 
         dados += texto.toLatin1();
-
         dados += "\n";
 
         dados += EscPosComandos::bold(false);
 
-        // aqui entra o código de barras
         dados += EscPosComandos::imagem(barcodeImage);
 
         dados += "\n";
 
         dados += EscPosComandos::feed(4);
 
-        if(i != quantidade-1)
+        if (i != quantidade - 1)
             dados += EscPosComandos::cortar();
     }
 
     dados += EscPosComandos::cortar();
 
-    return imprimirRaw(printerName,dados,erro);
+    return imprimirRaw(printerName, dados);
 }
 
 

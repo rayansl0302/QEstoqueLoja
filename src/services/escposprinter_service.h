@@ -8,13 +8,18 @@ class EscPosPrinter_service : public QObject
 {
     Q_OBJECT
 public:
+    struct Resultado {
+        bool ok;
+        QString msg;
+    };
     explicit EscPosPrinter_service(QObject *parent = nullptr);
     bool imprimirTeste(const QString &printerName, QString *erro = nullptr);
 
-    bool imprimirRaw(const QString &printerName,
-                     const QByteArray &dados,
-                     QString *erro = nullptr);
-    bool imprimirEtiquetas(const QString &printerName, int quantidade, const QImage &barcodeImage, const QString &descricao, double preco, QString *erro);
+    EscPosPrinter_service::Resultado imprimirRaw(const QString &printerName,
+                     const QByteArray &dados);
+    EscPosPrinter_service::Resultado imprimirEtiquetas(const QString &printerName, int quantidade,
+                                                       const QImage &barcodeImage, const QString &descricao,
+                                                       double preco);
 private:
 signals:
 };
