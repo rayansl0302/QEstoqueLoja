@@ -128,6 +128,7 @@ private:
 
     void mostrarProdutoPorCodigoBarras(const QString &codigo);
     void iniciarMigration();
+    void atualizarConfigDTO();
 protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
     QString getIdProdSelected();
