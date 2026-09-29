@@ -55,6 +55,10 @@ protected:
     void removerItem(int row);
     void desfazerRemocao();
     void atualizarContagemItens();
+    void avancarParaPagamento();
+    void finalizarRapido();
+    bool pagamentoValido();
+    void selecionarFormaPagamento(int index);
     bool eventFilter(QObject *obj, QEvent *event) override;
 
 private slots:
@@ -74,6 +78,7 @@ private slots:
     void on_Ledit_Taxa_textChanged(const QString &arg1);
     void on_Ledit_Desconto_textChanged(const QString &arg1);
     void on_Ledit_Recebido_textChanged(const QString &arg1);
+    void on_Ledit_Recebido_returnPressed();
     void on_CheckPorcentagem_stateChanged(int arg1);
     void on_CBox_ModeloEmit_currentIndexChanged(int index);
 
@@ -121,6 +126,7 @@ private:
     };
     ItemRemovido ultimoRemovido;
     bool temRemovido = false;
+    bool pulouCliente = false;
     QTimer *desfazerTimer = nullptr;
 
 signals:

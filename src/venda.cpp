@@ -125,6 +125,15 @@ venda::venda(QWidget *parent) :
     QShortcut *atalhoDesfazer = new QShortcut(QKeySequence(Qt::Key_F8), this);
     connect(atalhoDesfazer, &QShortcut::activated, this, &venda::desfazerRemocao);
 
+    // Alt+1..4 escolhem a forma de pagamento (só valem na página de pagamento)
+    const QList<QPair<Qt::Key, int>> atalhosForma = {
+        {Qt::Key_1, 0}, {Qt::Key_2, 3}, {Qt::Key_3, 2}, {Qt::Key_4, 4}};
+    for (const auto &atalho : atalhosForma) {
+        QShortcut *sc = new QShortcut(QKeySequence(Qt::ALT | atalho.first), this);
+        const int indice = atalho.second;
+        connect(sc, &QShortcut::activated, this, [this, indice]() { selecionarFormaPagamento(indice); });
+    }
+
     // contagem de itens ao lado do total
     connect(modeloSelecionados, &QStandardItemModel::itemChanged,  this, &venda::atualizarContagemItens);
     connect(modeloSelecionados, &QStandardItemModel::rowsInserted, this, &venda::atualizarContagemItens);
@@ -253,6 +262,8 @@ venda::venda(QWidget *parent) :
 void venda::irParaPagina(int pagina)
 {
     ui->stack_Pages->setCurrentIndex(pagina);
+    if (pagina == 1)
+        pulouCliente = false;
 
     const QString styleAtivo   = "background-color: rgb(43,132,191); color: white; border-radius: 14px; font: 700 9pt \"Ubuntu\"; padding: 2px 12px;";
     const QString styleInativo = "background-color: rgba(195,215,235,60); color: rgba(195,215,235,160); border-radius: 14px; font: 700 9pt \"Ubuntu\"; padding: 2px 12px;";
@@ -266,7 +277,7 @@ void venda::irParaPagina(int pagina)
 
     switch (pagina) {
     case 0:
-        ui->Btn_Aceitar->setText("Próximo →");
+        ui->Btn_Aceitar->setText("Pagamento (F10) →");
         ui->Ledit_Pesquisa->setFocus();
         break;
     case 1:
@@ -274,8 +285,13 @@ void venda::irParaPagina(int pagina)
         ui->DateEdt_Venda->setFocus();
         break;
     case 2:
-        ui->Btn_Aceitar->setText(configDTO.emitNfFiscal ? "Próximo: Nota Fiscal →" : "✓ Confirmar Venda");
-        ui->Ledit_Recebido->setFocus();
+        ui->Btn_Aceitar->setText(configDTO.emitNfFiscal ? "Próximo: Nota Fiscal →" : "✓ Confirmar Venda (F10)");
+        if (ui->Ledit_Recebido->isHidden()) {
+            ui->Btn_Aceitar->setFocus();
+        } else {
+            ui->Ledit_Recebido->setFocus();
+            QTimer::singleShot(0, ui->Ledit_Recebido, &QLineEdit::selectAll);
+        }
         break;
     case 3:
         ui->Btn_Aceitar->setText("Emitir e Confirmar →");
@@ -289,13 +305,7 @@ void venda::on_Btn_Aceitar_clicked()
     int pagina = ui->stack_Pages->currentIndex();
 
     if (pagina == 0) {
-        if (modeloSelecionados->rowCount() == 0) {
-            QMessageBox::warning(this, "Carrinho", "Adicione pelo menos um produto ao carrinho.");
-            return;
-        }
-        ui->Lbl_ResumoTotalCliente->setText("R$ " + Total());
-        ui->Lbl_ResumoItens->setText(QString::number(modeloSelecionados->rowCount()) + " itens");
-        irParaPagina(1);
+        avancarParaPagamento();
 
     } else if (pagina == 1) {
         idClienteAtual = validarCliente(true);
@@ -316,10 +326,81 @@ void venda::on_Btn_Aceitar_clicked()
     }
 }
 
+void venda::avancarParaPagamento()
+{
+    if (modeloSelecionados->rowCount() == 0) {
+        QMessageBox::warning(this, "Carrinho", "Adicione pelo menos um produto ao carrinho.");
+        return;
+    }
+    ui->Lbl_ResumoTotalCliente->setText("R$ " + Total());
+    ui->Lbl_ResumoItens->setText(QString::number(modeloSelecionados->rowCount()) + " itens");
+
+    // o cliente padrão já vem preenchido: só passa pela página de cliente se ele não servir
+    idClienteAtual = validarCliente(false);
+    if (idClienteAtual < 0) {
+        irParaPagina(1);
+        validarCliente(true);
+        return;
+    }
+    configurarPaginaPagamento();
+    irParaPagina(2);
+    pulouCliente = true;
+}
+
+bool venda::pagamentoValido()
+{
+    if (ui->CBox_FormaPagamento->currentIndex() == 0) {
+        const double recebido = portugues.toDouble(ui->Ledit_Recebido->text());
+        const double valorFinal = portugues.toDouble(ui->Lbl_TotalTaxa->text());
+        if (recebido + 0.005 < valorFinal) {
+            QMessageBox::warning(this, "Pagamento", "O valor recebido é menor que o valor a pagar.");
+            ui->Ledit_Recebido->setFocus();
+            ui->Ledit_Recebido->selectAll();
+            return false;
+        }
+    }
+    return true;
+}
+
+// F10: leva ao pagamento e, estando nele, confirma
+void venda::finalizarRapido()
+{
+    const int pagina = ui->stack_Pages->currentIndex();
+    if (pagina == 0) {
+        avancarParaPagamento();
+        return;
+    }
+    if (pagina == 2 && !pagamentoValido())
+        return;
+    on_Btn_Aceitar_clicked();
+}
+
+void venda::selecionarFormaPagamento(int index)
+{
+    if (ui->stack_Pages->currentIndex() != 2)
+        return;
+    ui->CBox_FormaPagamento->setCurrentIndex(index);
+    on_CBox_FormaPagamento_activated(index);
+    if (index == 0) {
+        ui->Ledit_Recebido->setFocus();
+        QTimer::singleShot(0, ui->Ledit_Recebido, &QLineEdit::selectAll);
+    } else {
+        ui->Btn_Aceitar->setFocus();
+    }
+}
+
+void venda::on_Ledit_Recebido_returnPressed()
+{
+    if (ui->stack_Pages->currentIndex() == 2 && pagamentoValido())
+        on_Btn_Aceitar_clicked();
+}
+
 void venda::on_Btn_Voltar_clicked()
 {
     int pagina = ui->stack_Pages->currentIndex();
-    if (pagina > 0)
+    if (pagina == 2 && pulouCliente)
+        irParaPagina(0);
+    else if (pagina > 0)
         irParaPagina(pagina - 1);
 }
 
@@ -469,6 +550,10 @@ void venda::on_Ledit_Recebido_textChanged(const QString &)
     float troco = portugues.toFloat(ui->Ledit_Recebido->text())
                   - portugues.toFloat(ui->Lbl_TotalTaxa->text());
     ui->Lbl_Troco->setText(portugues.toString(troco, 'f', 2));
+    // verde quando há troco, vermelho quando falta dinheiro
+    ui->Lbl_Troco->setStyleSheet(troco < 0
+        ? "font: 700 40pt \"Ubuntu\"; color: rgb(191,61,64);"
+        : "font: 700 40pt \"Ubuntu\"; color: rgb(30,140,70);");
 }
 
 void venda::on_Ledit_Taxa_textChanged(const QString &) { descontoTaxa(); }
@@ -1007,7 +1092,17 @@ void venda::keyPressEvent(QKeyEvent *event)
         ui->Ledit_Pesquisa->setFocus();
         ui->Ledit_Pesquisa->selectAll();
     } else if (event->key() == Qt::Key_Escape) {
-        ui->Btn_CancelarVenda->click();
+        // fora da página de produtos, Esc só volta para ela
+        if (ui->stack_Pages->currentIndex() > 0)
+            irParaPagina(0);
+        else
+            ui->Btn_CancelarVenda->click();
+    } else if (event->key() == Qt::Key_F10) {
+        finalizarRapido();
+    } else if (ui->stack_Pages->currentIndex() == 2 && focusWidget() == ui->Btn_Aceitar &&
+               (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)) {
+        if (pagamentoValido())
+            on_Btn_Aceitar_clicked();
     } else if (event->key() == Qt::Key_F4) {
         ui->Tview_Produtos->setFocus();
     } else if (event->key() == Qt::Key_F2) {

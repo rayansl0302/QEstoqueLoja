@@ -795,7 +795,7 @@ QLabel { background-color: transparent; border: none; }
             <string notr="true">font: 700 14pt &quot;Ubuntu&quot;; color: rgb(40,60,80);</string>
            </property>
            <property name="text">
-            <string>Como vai pagar?</string>
+            <string>Como vai pagar? (Alt+1 Dinheiro · Alt+2 Débito · Alt+3 Crédito · Alt+4 Pix)</string>
            </property>
           </widget>
          </item>
@@ -921,7 +921,7 @@ QLabel { background-color: transparent; border: none; }
          <item>
           <widget class="QLabel" name="Lbl_TotalTaxa">
            <property name="styleSheet">
-            <string notr="true">font: 700 22pt &quot;Ubuntu&quot;; color: rgb(33,105,149);</string>
+            <string notr="true">font: 700 36pt &quot;Ubuntu&quot;; color: rgb(33,105,149);</string>
            </property>
            <property name="text">
             <string>0</string>
@@ -955,7 +955,7 @@ QLabel { background-color: transparent; border: none; }
          <item>
           <widget class="QLabel" name="Lbl_Troco">
            <property name="styleSheet">
-            <string notr="true">font: 700 18pt &quot;Ubuntu&quot;; color: rgb(30,140,70);</string>
+            <string notr="true">font: 700 40pt &quot;Ubuntu&quot;; color: rgb(30,140,70);</string>
            </property>
            <property name="text">
             <string>0</string>
