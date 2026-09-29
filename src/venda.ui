@@ -963,6 +963,17 @@ QLabel { background-color: transparent; border: none; }
           </widget>
          </item>
          <item>
+          <widget class="QCheckBox" name="CheckImprimirCupomPag">
+           <property name="text">
+            <string>Imprimir cupom na impressora térmica</string>
+           </property>
+           <property name="icon">
+            <iconset resource="../Imagens/recursosImg.qrc">
+             <normaloff>:/QEstoqueLOja/document-print.svg</normaloff>:/QEstoqueLOja/document-print.svg</iconset>
+           </property>
+          </widget>
+         </item>
+         <item>
           <spacer>
            <property name="orientation">
             <enum>Qt::Orientation::Vertical</enum>
@@ -1344,6 +1355,19 @@ QLineEdit { background-color: white; border: 1px solid rgb(155,165,185); border-
         </property>
         <property name="text">
          <string>Cancelar Venda (ESC)</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="Chk_NovaVenda">
+        <property name="styleSheet">
+         <string notr="true">font: 700 9pt &quot;Segoe UI&quot;; color: rgb(40,60,80); background-color: transparent; border: none;</string>
+        </property>
+        <property name="text">
+         <string>Nova venda ao finalizar</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
         </property>
        </widget>
       </item>

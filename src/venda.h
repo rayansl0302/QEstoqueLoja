@@ -55,6 +55,8 @@ protected:
     void removerItem(int row);
     void desfazerRemocao();
     void atualizarContagemItens();
+    void definirClientePadrao();
+    void reiniciarVenda(bool manterRascunho);
     void avancarParaPagamento();
     void finalizarRapido();
     bool pagamentoValido();

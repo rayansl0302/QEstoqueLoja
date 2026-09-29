@@ -22,6 +22,8 @@
 #include <cmath>
 #include "delegateacoescarrinho.h"
 #include "delegatecatalogopdv.h"
+#include <QSettings>
+#include "infra/apppath_service.h"
 #include "inserircliente.h"
 #include "infojanelaprod.h"
 #include "../services/Produto_service.h"
@@ -35,6 +37,22 @@ QString formatarQuantidade(const QLocale &base, double q)
     l.setNumberOptions(l.numberOptions() | QLocale::OmitGroupSeparator);
     const bool inteira = std::fabs(q - std::round(q)) < 1e-9;
     return l.toString(q, 'f', inteira ? 0 : 2);
+}
+}
+
+namespace {
+// preferências do PDV: seção [pdv] do config.ini (sem migration, com valor padrão)
+bool lerPreferenciaPdv(const QString &chave, bool padrao)
+{
+    QSettings ini(AppPath_service::configPath(), QSettings::IniFormat);
+    const QVariant v = ini.value("pdv/" + chave);
+    return v.isValid() ? v.toString() == "1" : padrao;
+}
+
+void gravarPreferenciaPdv(const QString &chave, bool valor)
+{
+    QSettings ini(AppPath_service::configPath(), QSettings::IniFormat);
+    ini.setValue("pdv/" + chave, valor ? "1" : "0");
 }
 }
 
@@ -125,6 +143,14 @@ venda::venda(QWidget *parent) :
     QShortcut *atalhoDesfazer = new QShortcut(QKeySequence(Qt::Key_F8), this);
     connect(atalhoDesfazer, &QShortcut::activated, this, &venda::desfazerRemocao);
 
+    // preferências do PDV
+    ui->Chk_NovaVenda->setChecked(lerPreferenciaPdv("nova_venda_ao_finalizar", true));
+    connect(ui->Chk_NovaVenda, &QCheckBox::toggled, this,
+            [](bool marcado) { gravarPreferenciaPdv("nova_venda_ao_finalizar", marcado); });
+    ui->CheckImprimirCupomPag->setChecked(lerPreferenciaPdv("imprimir_cupom", false));
+    connect(ui->CheckImprimirCupomPag, &QCheckBox::toggled, this,
+            [](bool marcado) { gravarPreferenciaPdv("imprimir_cupom", marcado); });
+
     // Alt+1..4 escolhem a forma de pagamento (só valem na página de pagamento)
     const QList<QPair<Qt::Key, int>> atalhosForma = {
         {Qt::Key_1, 0}, {Qt::Key_2, 3}, {Qt::Key_3, 2}, {Qt::Key_4, 4}};
@@ -161,13 +187,7 @@ venda::venda(QWidget *parent) :
 
     atualizarListaCliente();
 
-    if (!clientesComId.isEmpty()) {
-        ui->Ledit_Cliente->setText(clientesComId.first());
-        QString primeiroCliente = clientesComId.first();
-        int posFinalNome = primeiroCliente.indexOf(" (ID:");
-        if (posFinalNome != -1)
-            ui->Ledit_Cliente->setSelection(0, posFinalNome);
-    }
+    definirClientePadrao();
 
     QStringListModel *model = new QStringListModel(clientesComId, this);
     completer->setModel(model);
@@ -222,6 +242,7 @@ venda::venda(QWidget *parent) :
     // step 4 só aparece quando NF está habilitado nas configurações
     ui->Lbl_Step4->setVisible(configDTO.emitNfFiscal);
     ui->lbl_sep3->setVisible(configDTO.emitNfFiscal);
+    ui->CheckImprimirCupomPag->setVisible(!configDTO.emitNfFiscal);
 
     rascunhoTimer = new QTimer(this);
     rascunhoTimer->setSingleShot(true);
@@ -634,7 +655,8 @@ void venda::terminarPagamento()
     }
     newVenda.id = result.idVendaInserida;
 
-    if (ui->CheckImprimirCNF->isChecked())
+    if (ui->CheckImprimirCNF->isChecked() ||
+        (!configDTO.emitNfFiscal && ui->CheckImprimirCupomPag->isChecked()))
         Vendas::imprimirReciboVenda(newVenda.id);
 
     if (configDTO.emitNfFiscal) {
@@ -722,7 +744,63 @@ void venda::terminarPagamento()
 
     descartarRascunho();
     emit vendaConcluida();
-    this->close();
+    if (ui->Chk_NovaVenda->isChecked())
+        reiniciarVenda(false);
+    else
+        this->close();
+}
+
+void venda::definirClientePadrao()
+{
+    if (clientesComId.isEmpty())
+        return;
+    const QString primeiroCliente = clientesComId.first();
+    ui->Ledit_Cliente->setText(primeiroCliente);
+    const int posFinalNome = primeiroCliente.indexOf(" (ID:");
+    if (posFinalNome != -1)
+        ui->Ledit_Cliente->setSelection(0, posFinalNome);
+}
+
+// Deixa a tela pronta para a próxima venda, sem fechar.
+void venda::reiniciarVenda(bool manterRascunho)
+{
+    modeloSelecionados->removeRows(0, modeloSelecionados->rowCount());
+    temRemovido = false;
+    desfazerTimer->stop();
+    ui->Btn_DesfazerRemocao->hide();
+
+    temRascunhoPendente = false;
+    rascunhoPendente = RascunhoVendaDTO();
+    idClienteAtual = -1;
+    CLIENTE = ClienteDTO();
+
+    atualizarListaCliente();
+    definirClientePadrao();
+    ui->DateEdt_Venda->setDateTime(QDateTime::currentDateTime());
+
+    // pagamento volta ao padrão (Dinheiro, sem desconto)
+    ui->CBox_FormaPagamento->setCurrentIndex(0);
+    ui->CheckPorcentagem->setChecked(false);
+    ui->Ledit_Desconto->setText("0");
+    ui->Ledit_Taxa->setText("0");
+    ui->Ledit_Recebido->setText("0");
+    ui->Ledit_CpfCnpjCliente->clear();
+    if (configDTO.emitNfFiscal) {
+        ui->CBox_ModeloEmit->setCurrentIndex(0);
+        ui->RadioBtn_EmitNfApenas->setChecked(true);
+    }
+    ui->Lbl_Total->setText(Total());
+
+    // recarrega o catálogo (estoque atualizado) e volta para a busca
+    ui->Ledit_Pesquisa->clear();
+    on_Btn_Pesquisa_clicked();
+    irParaPagina(0);
+    ui->Ledit_Pesquisa->setFocus();
+
+    // as alterações acima agendaram o salvamento do rascunho: a venda nova não herda nada
+    rascunhoTimer->stop();
+    if (!manterRascunho)
+        descartarRascunho();
 }
 
 // ─── Products page ────────────────────────────────────────────────────────────
@@ -756,6 +834,11 @@ venda::~venda() { delete ui; }
 
 void venda::salvarRascunho()
 {
+    if (modeloSelecionados->rowCount() == 0) {
+        descartarRascunho();
+        return;
+    }
+
     RascunhoVendaSaveDTO dto;
 
     for (int row = 0; row < modeloSelecionados->rowCount(); ++row) {
@@ -1095,8 +1178,8 @@ void venda::keyPressEvent(QKeyEvent *event)
         // fora da página de produtos, Esc só volta para ela
         if (ui->stack_Pages->currentIndex() > 0)
             irParaPagina(0);
-        else
-            ui->Btn_CancelarVenda->click();
+        else if (!ui->Chk_NovaVenda->isChecked() || modeloSelecionados->rowCount() > 0)
+            ui->Btn_CancelarVenda->click();  // no modo contínuo, com carrinho vazio, Esc não fecha a tela
     } else if (event->key() == Qt::Key_F10) {
         finalizarRapido();
     } else if (ui->stack_Pages->currentIndex() == 2 && focusWidget() == ui->Btn_Aceitar &&
@@ -1235,12 +1318,23 @@ void venda::on_Ledit_Pesquisa_returnPressed()
 
 void venda::on_Btn_CancelarVenda_clicked()
 {
+    const bool continuo = ui->Chk_NovaVenda->isChecked();
     if (modeloSelecionados->rowCount() > 0) {
         auto resp = QMessageBox::question(this, "Cancelar Venda",
             "Deseja salvar um rascunho para continuar esta venda depois?",
             QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
         if (resp == QMessageBox::Cancel) return;
-        if (resp == QMessageBox::No) descartarRascunho();
+        if (resp == QMessageBox::No) {
+            rascunhoTimer->stop();
+            descartarRascunho();
+        } else if (continuo) {
+            rascunhoTimer->stop();
+            salvarRascunho();
+        }
+        if (continuo) {
+            reiniciarVenda(resp == QMessageBox::Yes);
+            return;
+        }
     }
     this->close();
 }
