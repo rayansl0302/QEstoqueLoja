@@ -24,6 +24,7 @@ set(TEST_SOURCES
 
     # util
     util/test_dbutil.cpp
+    util/test_chaveacessoutil.cpp
 
     # infra de teste
     db/test_db_factory.cpp
@@ -45,6 +46,7 @@ add_executable(QEstoqueLojaTests
     services/test_barcode_service.h services/test_barcode_service.cpp
     services/test_manifestadordfe.h services/test_manifestadordfe.cpp
     recursosTest.qrc
+    util/test_chaveacessoutil.h util/test_chaveacessoutil.cpp
     services/test_cliente_service.h services/test_cliente_service.cpp
     services/test_vendas_service.h services/test_vendas_service.cpp
     services/test_produtovenda_service.h services/test_produtovenda_service.cpp

@@ -133,6 +133,7 @@ set(QESTOQUE_SOURCES
     src/util/ACBrConsultaCNPJ.cpp
     src/util/ACBrMail.cpp
     src/util/vendasutil.cpp
+    src/util/chaveacessoutil.cpp
     src/util/escposcomandos.cpp
 
     src/nota/ACBrNFe.cpp
@@ -252,6 +253,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/util/manifestadordfe.h src/util/manifestadordfe.cpp
         src/util/nfxmlutil.h src/util/nfxmlutil.cpp
         src/util/dbutil.h src/util/dbutil.cpp
+        src/util/chaveacessoutil.h src/util/chaveacessoutil.cpp
         src/mergeprodutos.h src/mergeprodutos.cpp src/mergeprodutos.ui
         src/delegatesugerido.h src/delegatesugerido.cpp
         src/util/ACBrMail.cpp src/util/ACBrMail.h
