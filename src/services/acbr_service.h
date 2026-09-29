@@ -28,6 +28,9 @@ public:
     explicit Acbr_service(QObject *parent = nullptr);
     Acbr_service::Resultado configurar(const QString &versaoApp);
     Acbr_service::Resultado carregarConfigParaDFE();
+    // Configura só o necessário para consultar/manifestar DF-e (certificado A1, UF, ambiente, schemas),
+    // sem exigir CSC/IdCSC nem "Emitir Notas Fiscais". Com a emissão ligada, vale a configuração completa.
+    Acbr_service::Resultado configurarParaDFE();
 private:
     ConfigDTO configDTO;
     ACBrNFe *nfe;

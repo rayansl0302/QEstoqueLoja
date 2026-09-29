@@ -1,6 +1,10 @@
 #include "entradanfe_service.h"
 #include "../util/chaveacessoutil.h"
 #include "../infra/apppath_service.h"
+#include "../nota/acbrmanager.h"
+#include "../nota/eventocienciaop.h"
+#include "acbr_service.h"
+#include <QRegularExpression>
 #include <QDomDocument>
 #include <QDomElement>
 #include <QDir>
@@ -238,5 +242,299 @@ EntradaNfe_service::Resultado EntradaNfe_service::importarConteudo(const QByteAr
     r.ok = true;
     r.idNota = idNota;
     r.msg = "NF-e importada com sucesso.";
+    return r;
+}
+
+// ─── Busca pela chave de acesso ──────────────────────────────────────────────
+
+void EntradaNfe_service::setConsultaChave(ConsultaChaveFn fn)
+{
+    consultaChave = std::move(fn);
+}
+
+void EntradaNfe_service::setEnviarCiencia(EnviarCienciaFn fn)
+{
+    enviarCiencia = std::move(fn);
+}
+
+EntradaNfe_service::Resultado EntradaNfe_service::verificarPodeBuscarPorChave()
+{
+    Config_service confServ;
+    const ConfigDTO c = confServ.carregarTudo();
+
+    QStringList faltas;
+    if (c.certificadoPathFiscal.trimmed().isEmpty())
+        faltas << "certificado digital A1 não configurado (caminho do arquivo .pfx)";
+    else if (!QFile::exists(c.certificadoPathFiscal))
+        faltas << "arquivo do certificado digital não encontrado: " + c.certificadoPathFiscal;
+    if (c.senhaCertificadoFiscal.isEmpty())
+        faltas << "senha do certificado digital não configurada";
+    if (c.estadoEmpresa.trimmed().size() != 2 || c.cUfFiscal.trimmed().isEmpty())
+        faltas << "UF da empresa (e o código da UF) não configurados";
+    if (ChaveAcessoUtil::somenteDigitos(c.cnpjEmpresa).size() != 14)
+        faltas << "CNPJ da empresa não configurado";
+    if (c.tpAmbFiscal != 1)
+        faltas << "o ambiente fiscal está em Homologação (a busca pela chave só funciona em Produção)";
+
+    // a ciência da operação é assinada e validada pela ACBrLib, que precisa dos schemas XSD
+    const QString schema = c.schemaPathFiscal.isEmpty() ? AppPath_service::schemaPath() : c.schemaPathFiscal;
+    if (QDir(schema).entryList(QStringList() << "*.xsd").isEmpty())
+        faltas << "schemas XSD da NF-e não encontrados em: " + schema;
+
+    Resultado r;
+    if (faltas.isEmpty()) {
+        r.ok = true;
+        return r;
+    }
+    r.erro = EntradaNfeErro::SemConfiguracao;
+    r.msg = "Para buscar pela chave de acesso falta:\n• " + faltas.join("\n• ")
+            + "\n\nVocê ainda pode lançar a nota com \"Importar XML...\", sem certificado.";
+    return r;
+}
+
+QString EntradaNfe_service::consultarSefaz(const QString &chave, QString &erro)
+{
+    if (consultaChave)
+        return consultaChave(chave);
+
+    Config_service confServ;
+    const ConfigDTO c = confServ.carregarTudo();
+    try {
+        ACBrNFe *acbr = AcbrManager::instance()->nfe();
+        if (!acbr) {
+            erro = "A biblioteca fiscal (ACBrLib) não está disponível.";
+            return QString();
+        }
+        const QString cnpj = ChaveAcessoUtil::somenteDigitos(c.cnpjEmpresa);
+        return QString::fromStdString(
+            acbr->DistribuicaoDFePorChave(c.cUfFiscal.toInt(), cnpj.toStdString(), chave.toStdString()));
+    } catch (const std::exception &e) {
+        erro = QString("Falha ao consultar a SEFAZ: %1").arg(e.what());
+    } catch (...) {
+        erro = "Falha desconhecida ao consultar a SEFAZ.";
+    }
+    return QString();
+}
+
+EventoFiscalDTO EntradaNfe_service::enviarCienciaPadrao(const QString &chave)
+{
+    EventoCienciaOP evento(nullptr, chave);
+    return evento.gerarEnviarRetorno();
+}
+
+void EntradaNfe_service::registrarCiencia(EventoFiscalDTO evento, qlonglong idNota)
+{
+    evento.idNf = idNota;
+    auto r = eveServ.inserir(evento);
+    if (!r.ok)
+        qDebug() << "Não gravou o evento de ciência:" << r.msg;
+}
+
+EntradaNfe_service::Resultado EntradaNfe_service::buscarPorChave(const QString &texto)
+{
+    Resultado r;
+
+    const ChaveAcessoInfo ci = ChaveAcessoUtil::analisar(texto);
+    if (!ci.valida) {
+        r.erro = EntradaNfeErro::ChaveInvalida;
+        r.msg = ci.erro;
+        return r;
+    }
+    const QString chave = ci.chave;
+    r.chave = chave;
+
+    // já lançada: só devolve a nota para a tela selecionar (sem consultar a SEFAZ)
+    const qlonglong existente = nfServ.getIdFromChave(chave);
+    if (existente > 0) {
+        const NotaFiscalDTO nota = nfServ.getNotaById(existente);
+        const bool completa = nota.finalidade == "ENTRADA EXTERNA"
+                              && (nota.cstat == "100" || nota.cstat == "150");
+        if (completa || (nota.finalidade != "resNFe" && nota.finalidade != "ENTRADA EXTERNA")) {
+            r.erro = EntradaNfeErro::Duplicada;
+            r.idNota = existente;
+            r.msg = "Esta NF-e já está lançada em Compras.";
+            return r;
+        }
+    }
+
+    if (!consultaChave) {
+        Resultado pode = verificarPodeBuscarPorChave();
+        if (!pode.ok)
+            return pode;
+        Acbr_service acbrServ;
+        auto cfg = acbrServ.configurarParaDFE();
+        if (!cfg.ok) {
+            r.erro = EntradaNfeErro::SemConfiguracao;
+            r.msg = cfg.msg;
+            return r;
+        }
+    }
+
+    QString erro;
+    const QString retorno = consultarSefaz(chave, erro);
+    if (!erro.isEmpty()) {
+        r.erro = EntradaNfeErro::SefazRejeitou;
+        r.msg = erro;
+        return r;
+    }
+
+    Resultado r1 = processarRetornoDistribuicao(retorno, chave);
+    if (r1.erro != EntradaNfeErro::AguardandoXml)
+        return r1;
+
+    // Só veio o resumo: registra a Ciência da Operação e consulta UMA vez de novo.
+    // (Não repetimos sozinhos: a SEFAZ bloqueia o CNPJ por excesso de consultas.)
+    const EventoFiscalDTO ciencia = enviarCiencia ? enviarCiencia(chave) : enviarCienciaPadrao(chave);
+    const bool cienciaOk = ciencia.cstat == "128" || ciencia.cstat == "135"
+                           || ciencia.cstat == "136" || ciencia.cstat == "573"; // 573 = já manifestada antes
+    if (!cienciaOk) {
+        r1.ok = false;
+        r1.erro = EntradaNfeErro::SefazRejeitou;
+        r1.msg = QString("Não foi possível registrar a Ciência da Operação na SEFAZ (cStat %1 - %2). "
+                         "Ela é necessária para liberar o XML completo da nota.")
+                     .arg(ciencia.cstat, ciencia.justificativa);
+        return r1;
+    }
+
+    QString erro2;
+    const QString retorno2 = consultarSefaz(chave, erro2);
+    if (!erro2.isEmpty()) {
+        r.erro = EntradaNfeErro::SefazRejeitou;
+        r.msg = erro2;
+        return r;
+    }
+
+    Resultado r2 = processarRetornoDistribuicao(retorno2, chave);
+    if (r2.ok) {
+        if (ciencia.cstat != "573")
+            registrarCiencia(ciencia, r2.idNota);
+        return r2;
+    }
+    if (r2.erro == EntradaNfeErro::AguardandoXml) {
+        r2.msg = "A Ciência da Operação foi enviada, mas a SEFAZ ainda não liberou o XML completo desta nota. "
+                 "Nada foi lançado: aguarde alguns minutos e busque a chave novamente.";
+    }
+    return r2;
+}
+
+EntradaNfe_service::Resultado EntradaNfe_service::processarRetornoDistribuicao(const QString &retorno,
+                                                                               const QString &chave)
+{
+    Resultado r;
+    r.chave = chave;
+
+    if (retorno.trimmed().isEmpty()) {
+        r.erro = EntradaNfeErro::SefazRejeitou;
+        r.msg = "A SEFAZ não devolveu resposta. Verifique a conexão com a internet e tente novamente.";
+        return r;
+    }
+
+    auto campo = [](const QString &bloco, const QString &nome) {
+        QRegularExpression re("^" + nome + R"(=([^\r\n]*))", QRegularExpression::MultilineOption);
+        const QRegularExpressionMatch m = re.match(bloco);
+        return m.hasMatch() ? m.captured(1).trimmed() : QString();
+    };
+
+    // início dos blocos de documento ([ResDFe001], [ResNFe001], [ProcNFe001]...)
+    static const QRegularExpression inicioBloco(R"(^\[(ResDFe|ResNFe|ProcNFe|ResEvento|ProcEvento)\w*\]\s*$)",
+                                                QRegularExpression::MultilineOption);
+    QList<int> inicios;
+    auto it = inicioBloco.globalMatch(retorno);
+    while (it.hasNext())
+        inicios << it.next().capturedStart();
+
+    const QString cabecalho = inicios.isEmpty() ? retorno : retorno.left(inicios.first());
+    const QString cStat = campo(cabecalho, "CStat");
+    QString motivo = campo(cabecalho, "XMotivo");
+    if (motivo.isEmpty())
+        motivo = campo(cabecalho, "Msg");
+
+    if (cStat == "137") {
+        r.erro = EntradaNfeErro::SefazRejeitou;
+        r.msg = "A SEFAZ não encontrou esta NF-e para o CNPJ da empresa. Confira se a chave está correta e se a "
+                "nota foi emitida contra o CNPJ desta empresa (destinatário). Notas muito recentes podem levar "
+                "alguns minutos para aparecer.";
+        return r;
+    }
+    if (cStat == "656") {
+        r.erro = EntradaNfeErro::SefazRejeitou;
+        r.msg = "A SEFAZ bloqueou temporariamente as consultas deste CNPJ por excesso de consultas "
+                "(consumo indevido, cStat 656). Aguarde cerca de 1 hora antes de tentar de novo. "
+                "Enquanto isso, use \"Importar XML...\".";
+        return r;
+    }
+    if (cStat == "593") {
+        r.erro = EntradaNfeErro::SefazRejeitou;
+        r.msg = "O CNPJ-base do certificado digital difere do CNPJ da empresa (cStat 593). "
+                "Confira se o certificado A1 configurado é da empresa.";
+        return r;
+    }
+    if (cStat != "138") {
+        r.erro = EntradaNfeErro::SefazRejeitou;
+        r.msg = QString("A SEFAZ rejeitou a consulta (cStat %1 - %2).").arg(cStat.isEmpty() ? "?" : cStat, motivo);
+        const QString m = motivo.toLower();
+        if (m.contains("interessad") || m.contains("destinat"))
+            r.msg += " Confira se esta empresa é a destinatária da NF-e.";
+        return r;
+    }
+
+    // percorre os documentos devolvidos: prefere o procNFe; guarda o resumo como alternativa
+    QString procXml;
+    bool temResumo = false;
+    for (int i = 0; i < inicios.size(); ++i) {
+        const int fim = (i + 1 < inicios.size()) ? inicios.at(i + 1) : retorno.size();
+        const QString bloco = retorno.mid(inicios.at(i), fim - inicios.at(i));
+
+        QString chDoc = campo(bloco, "chDFe");
+        if (chDoc.isEmpty())
+            chDoc = campo(bloco, "chNFe");
+        if (chDoc != chave && !bloco.contains(chave))
+            continue;
+
+        const QString schema = campo(bloco, "schema");
+        if (schema.contains("procNFe")) {
+            const QString situacao = campo(bloco, "cSitNFe");
+            if (situacao == "2" || situacao == "3") {
+                r.erro = EntradaNfeErro::NaoAutorizada;
+                r.msg = situacao == "3" ? "Esta NF-e foi cancelada pelo emitente e não pode ser lançada."
+                                        : "Esta NF-e foi denegada pela SEFAZ e não pode ser lançada.";
+                return r;
+            }
+            const int a = bloco.indexOf("<?xml");
+            const int b = bloco.lastIndexOf("</nfeProc>");
+            if (a >= 0 && b > a) {
+                procXml = bloco.mid(a, b + int(QString("</nfeProc>").size()) - a);
+            } else {
+                // plano B: o arquivo que a própria ACBrLib gravou
+                QString caminho = campo(bloco, "arquivo");
+                caminho.replace('\\', '/');
+                QFile f(caminho);
+                if (!caminho.isEmpty() && f.open(QIODevice::ReadOnly))
+                    procXml = QString::fromUtf8(f.readAll());
+            }
+        } else if (schema.contains("resNFe")) {
+            temResumo = true;
+            QString cnpj = campo(bloco, "CNPJCPF");
+            if (cnpj.isEmpty())
+                cnpj = campo(bloco, "CNPJ");
+            r.cnpjEmit = ChaveAcessoUtil::somenteDigitos(cnpj);
+        }
+    }
+
+    if (!procXml.isEmpty()) {
+        Resultado imp = importarConteudo(procXml.toUtf8(), /*ignorarDestinatario=*/false);
+        if (imp.erro == EntradaNfeErro::DestinatarioDiferente)
+            imp.msg += " A nota não foi lançada. Se realmente precisa dela, use \"Importar XML...\" e confirme.";
+        return imp;
+    }
+    if (temResumo) {
+        r.erro = EntradaNfeErro::AguardandoXml;
+        r.msg = "A SEFAZ devolveu apenas o resumo da nota. É preciso registrar a Ciência da Operação para "
+                "liberar o XML completo.";
+        return r;
+    }
+
+    r.erro = EntradaNfeErro::SefazRejeitou;
+    r.msg = "A SEFAZ respondeu, mas sem a NF-e pedida. Tente novamente em alguns minutos.";
     return r;
 }

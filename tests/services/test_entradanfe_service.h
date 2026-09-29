@@ -19,6 +19,15 @@ private slots:
     void nota_propria_e_recusada();
     void completa_nota_que_so_tinha_resumo();
     void importa_nota_com_pis_aliquota_sem_travar();
+
+    void busca_chave_invalida_nao_consulta_sefaz();
+    void busca_nota_ja_lancada_seleciona_sem_consultar();
+    void busca_devolve_procnfe_e_grava();
+    void busca_so_resumo_envia_ciencia_e_consulta_de_novo();
+    void busca_resumo_persistente_aguarda_sem_lancar_nada();
+    void busca_ciencia_rejeitada_explica();
+    void busca_traduz_erros_da_sefaz();
+    void busca_nota_cancelada_na_sefaz_e_recusada();
 };
 
 #endif // TEST_ENTRADANFE_SERVICE_H

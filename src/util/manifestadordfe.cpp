@@ -3,6 +3,7 @@
 #include "../nota/acbrmanager.h"
 #include "../nota/eventocienciaop.h"
 #include <QSqlQuery>
+#include <QSqlQueryModel>
 #include <QDateTime>
 #include <QDebug>
 #include "../configuracao.h"
@@ -376,6 +377,12 @@ void ManifestadorDFe::processarNota(const QString &bloco)
 
 bool ManifestadorDFe::salvarProdutosNota(const QString &xml_path, const QString &chnfe){
     qlonglong id_nf = nfServ.getIdFromChave(chnfe);
+
+    // itens já gravados (ex.: nota lançada pela chave de acesso ou por XML): não duplica
+    QSqlQueryModel itensExistentes;
+    prodNotaServ.listarPorNota(&itensExistentes, id_nf);
+    if (itensExistentes.rowCount() > 0)
+        return true;
 
     QList<ProdutoNotaDTO> produtos = xmlUtil.carregarProdutosDaNFe(xml_path, id_nf);
 

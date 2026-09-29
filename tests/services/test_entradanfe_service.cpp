@@ -79,6 +79,7 @@ void TestEntradaNfeService::cleanup()
 {
     DatabaseConnection_service::open();
     QSqlQuery q(DatabaseConnection_service::db());
+    q.exec("DELETE FROM eventos_fiscais");
     q.exec("DELETE FROM produtos_nota");
     q.exec("DELETE FROM notas_fiscais");
     q.exec("DELETE FROM clientes WHERE cpf = '" + kCnpjFornec + "'");
@@ -224,4 +225,193 @@ void TestEntradaNfeService::importa_nota_com_pis_aliquota_sem_travar()
     auto r = svc->importarConteudo(gerarNfeProc(gerarChave(9)));
     QVERIFY2(r.ok, qPrintable(r.msg));
     QCOMPARE(contar(QString("SELECT COUNT(*) FROM produtos_nota WHERE id_nf = %1 AND pis = '01'").arg(r.idNota)), 1LL);
+}
+
+// ─── busca pela chave de acesso ──────────────────────────────────────────────
+
+namespace {
+
+QString retornoComDocumento(const QString &chave, const QString &schema, const QString &xml,
+                            const QString &situacao = "1")
+{
+    return "[DistribuicaoDFe]\nCStat=138\nCUF=0\nMsg=Documento(s) localizado(s)\nXMotivo=Documento(s) localizado(s)\n"
+           "tpAmb=1\nultNSU=000000000000986\n\n"
+           "[ResDFe001]\nCNPJCPF=" + kCnpjFornec + "\nNSU=000000000000971\nXML=" + xml + "\n"
+           "arquivo=/tmp/inexistente.xml\ncSitNFe=" + situacao + "\nchDFe=" + chave + "\nschema=" + schema + "\nvNF=120,00\n";
+}
+
+QString retornoProc(const QString &chave, const QString &situacao = "1")
+{
+    return retornoComDocumento(chave, "procNFe", QString::fromUtf8(gerarNfeProc(chave)), situacao);
+}
+
+QString retornoResumo(const QString &chave)
+{
+    return retornoComDocumento(chave, "resNFe",
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<resNFe versao=\"1.01\"><chNFe>" + chave
+        + "</chNFe><CNPJ>" + kCnpjFornec + "</CNPJ><xNome>FORNECEDOR TESTE LTDA</xNome><vNF>120.00</vNF></resNFe>");
+}
+
+QString retornoSoCabecalho(const QString &cStat, const QString &motivo)
+{
+    return "[DistribuicaoDFe]\nCStat=" + cStat + "\nXMotivo=" + motivo + "\ntpAmb=1\n";
+}
+
+EventoFiscalDTO cienciaComStatus(const QString &cstat)
+{
+    EventoFiscalDTO e;
+    e.tipoEvento = "Ciencia de Operacao";
+    e.idLote = 1;
+    e.cstat = cstat;
+    e.justificativa = "Evento registrado";
+    e.nProt = "891260000000001";
+    e.idNf = 0;
+    e.codigo = "210210";
+    return e;
+}
+
+} // namespace
+
+void TestEntradaNfeService::busca_chave_invalida_nao_consulta_sefaz()
+{
+    QTemporaryDir dir;
+    QScopedPointer<EntradaNfe_service> svc(criar(dir));
+    int consultas = 0;
+    svc->setConsultaChave([&](const QString &) { ++consultas; return QString(); });
+
+    auto r = svc->buscarPorChave(gerarChave(20).left(43) + "0");
+    QVERIFY(!r.ok);
+    QCOMPARE(r.erro, EntradaNfeErro::ChaveInvalida);
+    QCOMPARE(consultas, 0);
+}
+
+void TestEntradaNfeService::busca_nota_ja_lancada_seleciona_sem_consultar()
+{
+    QTemporaryDir dir;
+    QScopedPointer<EntradaNfe_service> svc(criar(dir));
+    const QString chave = gerarChave(21);
+    auto imp = svc->importarConteudo(gerarNfeProc(chave));
+    QVERIFY2(imp.ok, qPrintable(imp.msg));
+
+    int consultas = 0;
+    svc->setConsultaChave([&](const QString &) { ++consultas; return QString(); });
+    auto r = svc->buscarPorChave(chave);
+
+    QVERIFY(!r.ok);
+    QCOMPARE(r.erro, EntradaNfeErro::Duplicada);
+    QCOMPARE(r.idNota, imp.idNota);
+    QCOMPARE(consultas, 0);
+    QCOMPARE(contar(QString("SELECT COUNT(*) FROM notas_fiscais WHERE chnfe = '%1'").arg(chave)), 1LL);
+}
+
+void TestEntradaNfeService::busca_devolve_procnfe_e_grava()
+{
+    QTemporaryDir dir;
+    QScopedPointer<EntradaNfe_service> svc(criar(dir));
+    const QString chave = gerarChave(22);
+    int consultas = 0, ciencias = 0;
+    svc->setConsultaChave([&](const QString &) { ++consultas; return retornoProc(chave); });
+    svc->setEnviarCiencia([&](const QString &) { ++ciencias; return cienciaComStatus("135"); });
+
+    auto r = svc->buscarPorChave(gerarChave(22));
+    QVERIFY2(r.ok, qPrintable(r.msg));
+    QCOMPARE(consultas, 1);
+    QCOMPARE(ciencias, 0);
+    QCOMPARE(contar(QString("SELECT COUNT(*) FROM produtos_nota WHERE id_nf = %1").arg(r.idNota)), 2LL);
+    QVERIFY(QFile::exists(dir.path() + QString("/xmlNf/entradas/%1-nfe.xml").arg(chave)));
+}
+
+void TestEntradaNfeService::busca_so_resumo_envia_ciencia_e_consulta_de_novo()
+{
+    QTemporaryDir dir;
+    QScopedPointer<EntradaNfe_service> svc(criar(dir));
+    const QString chave = gerarChave(23);
+    int consultas = 0, ciencias = 0;
+    svc->setConsultaChave([&](const QString &) {
+        ++consultas;
+        return consultas == 1 ? retornoResumo(chave) : retornoProc(chave);
+    });
+    svc->setEnviarCiencia([&](const QString &) { ++ciencias; return cienciaComStatus("135"); });
+
+    auto r = svc->buscarPorChave(chave);
+    QVERIFY2(r.ok, qPrintable(r.msg));
+    QCOMPARE(consultas, 2);
+    QCOMPARE(ciencias, 1);
+    QCOMPARE(contar(QString("SELECT COUNT(*) FROM produtos_nota WHERE id_nf = %1").arg(r.idNota)), 2LL);
+    // a ciência fica registrada na nota
+    QCOMPARE(contar(QString("SELECT COUNT(*) FROM eventos_fiscais WHERE id_nf = %1").arg(r.idNota)), 1LL);
+}
+
+void TestEntradaNfeService::busca_resumo_persistente_aguarda_sem_lancar_nada()
+{
+    QTemporaryDir dir;
+    QScopedPointer<EntradaNfe_service> svc(criar(dir));
+    const QString chave = gerarChave(24);
+    int consultas = 0, ciencias = 0;
+    svc->setConsultaChave([&](const QString &) { ++consultas; return retornoResumo(chave); });
+    svc->setEnviarCiencia([&](const QString &) { ++ciencias; return cienciaComStatus("135"); });
+
+    auto r = svc->buscarPorChave(chave);
+    QVERIFY(!r.ok);
+    QCOMPARE(r.erro, EntradaNfeErro::AguardandoXml);
+    QVERIFY(r.msg.contains("aguarde"));
+    // no máximo 2 consultas e 1 ciência: nunca insiste sozinho
+    QCOMPARE(consultas, 2);
+    QCOMPARE(ciencias, 1);
+    QCOMPARE(contar(QString("SELECT COUNT(*) FROM notas_fiscais WHERE chnfe = '%1'").arg(chave)), 0LL);
+}
+
+void TestEntradaNfeService::busca_ciencia_rejeitada_explica()
+{
+    QTemporaryDir dir;
+    QScopedPointer<EntradaNfe_service> svc(criar(dir));
+    const QString chave = gerarChave(25);
+    int consultas = 0;
+    svc->setConsultaChave([&](const QString &) { ++consultas; return retornoResumo(chave); });
+    svc->setEnviarCiencia([&](const QString &) { return cienciaComStatus("-1"); });
+
+    auto r = svc->buscarPorChave(chave);
+    QVERIFY(!r.ok);
+    QCOMPARE(r.erro, EntradaNfeErro::SefazRejeitou);
+    QVERIFY(r.msg.contains("Ciência"));
+    QCOMPARE(consultas, 1); // não consulta de novo se a ciência falhou
+}
+
+void TestEntradaNfeService::busca_traduz_erros_da_sefaz()
+{
+    QTemporaryDir dir;
+    QScopedPointer<EntradaNfe_service> svc(criar(dir));
+    const QString chave = gerarChave(26);
+
+    auto r137 = svc->processarRetornoDistribuicao(retornoSoCabecalho("137", "Nenhum documento localizado"), chave);
+    QCOMPARE(r137.erro, EntradaNfeErro::SefazRejeitou);
+    QVERIFY(r137.msg.contains("não encontrou"));
+
+    auto r656 = svc->processarRetornoDistribuicao(retornoSoCabecalho("656", "Rejeicao: Consumo Indevido"), chave);
+    QCOMPARE(r656.erro, EntradaNfeErro::SefazRejeitou);
+    QVERIFY(r656.msg.contains("656"));
+    QVERIFY(r656.msg.contains("1 hora"));
+
+    auto r593 = svc->processarRetornoDistribuicao(retornoSoCabecalho("593", "CNPJ-Base difere do certificado"), chave);
+    QVERIFY(r593.msg.contains("certificado"));
+
+    auto rOutro = svc->processarRetornoDistribuicao(
+        retornoSoCabecalho("999", "CNPJ do interessado nao e destinatario"), chave);
+    QVERIFY(rOutro.msg.contains("999"));
+    QVERIFY(rOutro.msg.contains("destinatária"));
+
+    auto rVazio = svc->processarRetornoDistribuicao("", chave);
+    QCOMPARE(rVazio.erro, EntradaNfeErro::SefazRejeitou);
+}
+
+void TestEntradaNfeService::busca_nota_cancelada_na_sefaz_e_recusada()
+{
+    QTemporaryDir dir;
+    QScopedPointer<EntradaNfe_service> svc(criar(dir));
+    const QString chave = gerarChave(27);
+    auto r = svc->processarRetornoDistribuicao(retornoProc(chave, "3"), chave);
+    QVERIFY(!r.ok);
+    QCOMPARE(r.erro, EntradaNfeErro::NaoAutorizada);
+    QVERIFY(r.msg.contains("cancelada"));
+    QCOMPARE(contar(QString("SELECT COUNT(*) FROM notas_fiscais WHERE chnfe = '%1'").arg(chave)), 0LL);
 }
