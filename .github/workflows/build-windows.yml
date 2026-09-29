@@ -30,6 +30,22 @@ jobs:
         shell: bash
         run: git clone --depth 1 --branch 2.13.0 https://github.com/zint/zint.git libs-externas/zint
 
+      # O submódulo traz só o código-fonte do QtRPT (relatórios); o CMake do projeto espera
+      # o QtRPT.lib em QtRptProject/bin/release/lib. Compila com qmake (Qt) + MSVC.
+      - name: Ambiente do compilador MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Compilar o QtRPT
+        shell: cmd
+        working-directory: libs-externas/cppbrasil/third-party/QtRptProject-Source/QtRptProject/QtRPT
+        run: |
+          qmake QtRPT.pro CONFIG+=release
+          nmake
+          dir ..\bin\release
+          dir ..\bin\release\lib
+
       - name: Configurar (CMake)
         shell: bash
         run: |
@@ -54,6 +70,8 @@ jobs:
           cp "$EXE" dist/
           # biblioteca do Zint (código de barras), se foi gerada como DLL
           find build -name "zint.dll" -exec cp {} dist/ \;
+          # biblioteca de relatórios (QtRPT), compilada acima
+          find libs-externas -name "QtRPT.dll" -path "*bin/release*" -exec cp {} dist/ \;
           "$QT_ROOT_DIR/bin/windeployqt.exe" --release --no-translations dist/QEstoqueLoja.exe
           cp -r recursos dist/recursos
           cp -r reports dist/reports
