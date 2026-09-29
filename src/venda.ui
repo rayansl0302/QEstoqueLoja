@@ -1482,6 +1482,16 @@ QLineEdit { background-color: white; border: 1px solid rgb(155,165,185); border-
      </layout>
     </widget>
    </item>
+   <item>
+    <widget class="QLabel" name="Lbl_Atalhos">
+     <property name="styleSheet">
+      <string notr="true">font: 9pt &quot;Segoe UI&quot;; color: rgb(80,90,105); background-color: rgb(238,238,238); border-top: 1px solid rgb(200,200,200); padding: 3px 12px;</string>
+     </property>
+     <property name="text">
+      <string>F1 Buscar · F4 Catálogo · F9 Carrinho · + / − Quantidade · Del Remover · F8 Desfazer · F10 Finalizar · Esc Cancelar</string>
+     </property>
+    </widget>
+   </item>
   </layout>
  </widget>
  <customwidgets>
