@@ -72,7 +72,11 @@ jobs:
           find build -name "zint.dll" -exec cp {} dist/ \;
           # biblioteca de relatórios (QtRPT), compilada acima
           find libs-externas -name "QtRPT.dll" -path "*bin/release*" -exec cp {} dist/ \;
-          "$QT_ROOT_DIR/bin/windeployqt.exe" --release --no-translations dist/QEstoqueLoja.exe
+          # QtRPT.dll vem antes: ela depende de Qt6Qml/Qt6Charts que o .exe sozinho não mostra ao windeployqt
+          find libs-externas -name "QtRPT.dll" -path "*bin/release*" -exec cp {} dist/ \;
+          "$QT_ROOT_DIR/bin/windeployqt.exe" --release --no-translations dist/QEstoqueLoja.exe dist/QtRPT.dll
+          echo "--- Qt6*.dll no pacote:"; ls dist | grep -i "^Qt6"
+          test -f dist/Qt6Qml.dll || { echo "ERRO: Qt6Qml.dll ausente no pacote"; exit 1; }
           # driver do PostgreSQL do Qt (o programa usa PostgreSQL em rede); precisa ser o mesmo Qt do .exe
           mkdir -p dist/sqldrivers
           cp "$QT_ROOT_DIR/plugins/sqldrivers/qsqlpsql.dll" dist/sqldrivers/ || echo "qsqlpsql.dll nao encontrado no Qt"
