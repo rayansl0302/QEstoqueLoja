@@ -34,7 +34,9 @@ jobs:
         shell: bash
         run: |
           # o zint.h fica em libs-externas/zint/backend e o projeto o inclui como "zint.h"
-          export CXXFLAGS="/I$(cygpath -m "$GITHUB_WORKSPACE")/libs-externas/zint/backend"
+          # "-I" (e não "/I"): o Git Bash trataria "/I..." como caminho e quebraria o comando
+          export MSYS_NO_PATHCONV=1
+          export CXXFLAGS="-I$(cygpath -m "$GITHUB_WORKSPACE")/libs-externas/zint/backend"
           cmake -S . -B build -G "Visual Studio 17 2022" -A x64 \
             -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" \
             -DZINT_USE_PNG=OFF -DZINT_USE_QT=OFF -DZINT_FRONTEND=OFF -DZINT_TEST=OFF
