@@ -583,20 +583,12 @@ void MainWindow::atualizarConfigAcbr(){
 
 void MainWindow::on_Btn_Entradas_clicked()
 {
-    if(configDTO.emitNfFiscal && configDTO.tpAmbFiscal){
-        Entradas *entradas = new Entradas();
-        entradas->show();
-        connect(entradas, &Entradas::produtoAdicionado, this,
-                &MainWindow::atualizarTableview);
-    }else{
-        QString motivo;
-        if (!configDTO.emitNfFiscal)
-            motivo = "a emissão de Notas Fiscais está desligada nas configurações";
-        else
-            motivo = "o ambiente fiscal está em 'Homologação' (é necessário o ambiente 'Produção')";
-        QMessageBox::warning(this, "Aviso", "Não foi possível abrir as notas de entrada: "
-                                            + motivo + ".");
-    }
+    // A tela abre sempre: importar XML funciona sem certificado e a própria tela explica
+    // o que falta para buscar pela chave de acesso (certificado A1 e ambiente de Produção).
+    Entradas *entradas = new Entradas();
+    entradas->show();
+    connect(entradas, &Entradas::produtoAdicionado, this,
+            &MainWindow::atualizarTableview);
 
 }
 

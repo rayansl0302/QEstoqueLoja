@@ -22,6 +22,9 @@ public:
     static QString mailConfigPath();
     static QString contingenciaPath();
     static QString pastaArmazenamentoArquivos();
+    // Caminho de XML gravado no banco -> caminho utilizável. Aceita relativo (à pasta de dados)
+    // e absoluto (notas baixadas antes por outro caminho).
+    static QString resolverXmlPath(const QString &caminhoGravado);
 private:
     Config_service confServ;
 signals:

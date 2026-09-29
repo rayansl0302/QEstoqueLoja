@@ -12,6 +12,7 @@
 #include "services/Produto_service.h"
 #include "services/fiscalemitter_service.h"
 #include "services/cliente_service.h"
+#include "services/entradanfe_service.h"
 
 struct Cliente{
     QString nome;
@@ -55,6 +56,11 @@ private slots:
 
     void on_DateEdt_Ate_userDateChanged(const QDate &date);
 
+    void on_Btn_BuscarChave_clicked();
+    void on_Btn_ImportarXml_clicked();
+    void on_Ledit_ChaveAcesso_returnPressed();
+    void on_Ledit_ChaveAcesso_textChanged(const QString &texto);
+
 private:
     Ui::Entradas *ui;
     QSqlDatabase db;
@@ -72,6 +78,9 @@ private:
     Produto_Service prodServ;
     FiscalEmitter_service fiscalEmitterServ;
     Cliente_service clienteServ;
+    EntradaNfe_service entradaNfeServ;
+    bool emBusca = false;
+    QString ultimaPastaXml;
 
 
     void carregarTabela();
@@ -83,6 +92,10 @@ private:
     void atualizarProdutoNotaAdicionado(QString idProd);
     void enviarEmailNFe(QString nomeCliente, QString emailCliente, QString xmlPath, std::string pdfDanfe, QString cnpj);
     void atualizarTabela(const QString &de = "", const QString &ate = "");
+    void atualizarStatusBusca();
+    void buscarChave();
+    void selecionarNotaPorId(qlonglong idNota);
+    void definirBuscando(bool buscando);
 
 signals:
     void produtoAdicionado();

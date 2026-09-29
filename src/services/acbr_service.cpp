@@ -2,6 +2,8 @@
 #include "../configuracao.h"
 #include <qdir.h>
 #include <qstandardpaths.h>
+#include <algorithm>
+#include "../infra/apppath_service.h"
 
 
 Acbr_service::Acbr_service(QObject *parent)
@@ -158,3 +160,57 @@ Acbr_service::Resultado Acbr_service::carregarConfigParaDFE(){
     return {true, AcbrErro::Nenhum, ""};
 }
 
+Acbr_service::Resultado Acbr_service::configurarParaDFE()
+{
+    Config_service confServ;
+    configDTO = confServ.carregarTudo();
+
+    if (!nfe) return {true, AcbrErro::Nenhum, ""};
+
+    // emissão ligada: a configuração completa (configurar) já vale; só ajusta o modelo para DF-e
+    if (configDTO.emitNfFiscal)
+        return carregarConfigParaDFE();
+
+    auto limpar = [](const QString &s) {
+        std::string r = s.trimmed().toStdString();
+        r.erase(std::remove(r.begin(), r.end(), '\0'), r.end());
+        return r;
+    };
+
+    const std::string certificado = limpar(configDTO.certificadoPathFiscal);
+    const std::string senha = limpar(configDTO.senhaCertificadoFiscal);
+    const std::string uf = limpar(configDTO.estadoEmpresa);
+    if (certificado.empty())
+        return {false, AcbrErro::CampoVazio, "Caminho do certificado não configurado"};
+    if (senha.empty())
+        return {false, AcbrErro::CampoVazio, "Senha do certificado não configurada"};
+    if (uf.size() != 2)
+        return {false, AcbrErro::ConfiguracaoInvalida, "UF inválida"};
+
+    const QString schema = configDTO.schemaPathFiscal.isEmpty() ? AppPath_service::schemaPath()
+                                                                : configDTO.schemaPathFiscal;
+    const QString caminhoXml = AppPath_service::xmlPath();
+    const QString caminhoEntradas = caminhoXml + "/entradas";
+    QDir().mkpath(caminhoEntradas);
+
+    nfe->ConfigGravarValor("DFe", "ArquivoPFX", certificado);
+    nfe->ConfigGravarValor("DFe", "Senha", senha);
+    nfe->ConfigGravarValor("DFe", "UF", uf);
+    nfe->ConfigGravarValor("DFe", "SSLHttpLib", "3");
+    nfe->ConfigGravarValor("DFe", "SSLCryptLib", "1");
+    nfe->ConfigGravarValor("DFe", "SSLXmlSignLib", "4");
+
+    nfe->ConfigGravarValor("NFe", "PathSchemas", schema.toStdString());
+    nfe->ConfigGravarValor("NFe", "ModeloDF", "0");
+    nfe->ConfigGravarValor("NFe", "VersaoDF", "3");
+    nfe->ConfigGravarValor("NFe", "FormaEmissao", "0");
+    nfe->ConfigGravarValor("NFe", "Ambiente", configDTO.tpAmbFiscal == 0 ? "1" : "0");
+    nfe->ConfigGravarValor("NFe", "Download.PathDownload", caminhoEntradas.toStdString());
+    nfe->ConfigGravarValor("NFe", "PathSalvar", caminhoXml.toStdString());
+    nfe->ConfigGravarValor("NFe", "PathEvento", caminhoXml.toStdString());
+    nfe->ConfigGravarValor("NFe", "SalvarEvento", "1");
+    nfe->ConfigGravarValor("Sistema", "Nome", "QEstoqueLoja");
+    nfe->ConfigGravar("");
+
+    return {true, AcbrErro::Nenhum, "Configurou ACBr para DF-e."};
+}

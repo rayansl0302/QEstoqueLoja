@@ -9,6 +9,10 @@ NotaFiscal_service::NotaFiscal_service(QObject *parent)
 }
 
 NotaFiscal_service::Resultado NotaFiscal_service::salvarResNfe(NotaFiscalDTO resumoNota){
+    // a nota pode já existir (ex.: lançada pela chave de acesso ou por XML): não duplica a linha
+    if(!resumoNota.chNfe.isEmpty() && notaRepo.getIdFromChave(resumoNota.chNfe) > 0){
+        return {true, NotaErro::Nenhum, "Nota já registrada."};
+    }
     if(notaRepo.salvarResNFe(resumoNota)){
         qDebug() << "Resumo nota salvo com sucesso!";
         return {true, NotaErro::Nenhum, ""};

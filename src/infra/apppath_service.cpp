@@ -141,3 +141,10 @@ QString AppPath_service::contingenciaPath(){
     }
     return path;
 }
+
+QString AppPath_service::resolverXmlPath(const QString &caminhoGravado)
+{
+    if (caminhoGravado.isEmpty() || QDir::isAbsolutePath(caminhoGravado))
+        return caminhoGravado;
+    return pastaArmazenamentoArquivos() + "/" + caminhoGravado;
+}

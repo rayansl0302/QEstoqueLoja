@@ -100,6 +100,7 @@ set(QESTOQUE_SOURCES
     src/services/eventofiscal_service.cpp
     src/services/notafiscal_service.cpp
     src/services/produtonota_service.cpp
+    src/services/entradanfe_service.cpp
     src/services/vendas_service.cpp
     src/services/produtovenda_service.cpp
     src/services/entradasvendas_service.cpp
@@ -133,6 +134,7 @@ set(QESTOQUE_SOURCES
     src/util/ACBrConsultaCNPJ.cpp
     src/util/ACBrMail.cpp
     src/util/vendasutil.cpp
+    src/util/chaveacessoutil.cpp
     src/util/escposcomandos.cpp
 
     src/nota/ACBrNFe.cpp
@@ -254,6 +256,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/util/manifestadordfe.h src/util/manifestadordfe.cpp
         src/util/nfxmlutil.h src/util/nfxmlutil.cpp
         src/util/dbutil.h src/util/dbutil.cpp
+        src/util/chaveacessoutil.h src/util/chaveacessoutil.cpp
         src/mergeprodutos.h src/mergeprodutos.cpp src/mergeprodutos.ui
         src/delegatesugerido.h src/delegatesugerido.cpp
         src/util/ACBrMail.cpp src/util/ACBrMail.h
@@ -294,6 +297,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/dto/ProdutoNota_dto.h
         src/repository/produtonota_repository.h src/repository/produtonota_repository.cpp
         src/services/produtonota_service.h src/services/produtonota_service.cpp
+        src/services/entradanfe_service.h src/services/entradanfe_service.cpp
         src/dto/Cliente_dto.h
         src/repository/cliente_repository.h src/repository/cliente_repository.cpp
         src/services/cliente_service.h src/services/cliente_service.cpp
