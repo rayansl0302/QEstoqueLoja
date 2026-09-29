@@ -21,6 +21,7 @@
 #include <QShortcut>
 #include <cmath>
 #include "delegateacoescarrinho.h"
+#include "delegatecatalogopdv.h"
 #include "inserircliente.h"
 #include "infojanelaprod.h"
 #include "../services/Produto_service.h"
@@ -53,8 +54,12 @@ venda::venda(QWidget *parent) :
     modeloProdutos->setHeaderData(5, Qt::Horizontal, tr("NF"));
 
     // delegates
-    CustomDelegate *delegateVermelho = new CustomDelegate(this);
-    ui->Tview_Produtos->setItemDelegateForColumn(1, delegateVermelho);
+    // catálogo: borda vermelha no estoque zerado + fundo discreto na linha (só visual)
+    ui->Tview_Produtos->setItemDelegateForColumn(1, new DelegateCatalogoPDV(true, this));
+    for (int coluna : {2, 3, 4})
+        ui->Tview_Produtos->setItemDelegateForColumn(coluna, new DelegateCatalogoPDV(false, this));
+    ui->Tview_Produtos->installEventFilter(this);
+    ui->Ledit_Pesquisa->installEventFilter(this);
     DelegatePrecoValidate *validatePreco = new DelegatePrecoValidate(this);
     ui->Tview_ProdutosSelecionados->setItemDelegateForColumn(3, validatePreco);
     DelegateLockCol *delegateLockCol = new DelegateLockCol(0, this);
@@ -916,6 +921,19 @@ void venda::atualizarContagemItens()
 
 bool venda::eventFilter(QObject *obj, QEvent *event)
 {
+    if (obj == ui->Ledit_Pesquisa && event->type() == QEvent::KeyPress) {
+        if (static_cast<QKeyEvent *>(event)->key() == Qt::Key_Down) {
+            focarCatalogo();
+            return true;
+        }
+    }
+    if (obj == ui->Tview_Produtos && event->type() == QEvent::KeyPress) {
+        if (static_cast<QKeyEvent *>(event)->key() == Qt::Key_Escape) {
+            ui->Ledit_Pesquisa->setFocus();
+            ui->Ledit_Pesquisa->selectAll();
+            return true;
+        }
+    }
     if (obj == ui->Tview_ProdutosSelecionados && event->type() == QEvent::KeyPress) {
         const int key = static_cast<QKeyEvent *>(event)->key();
         const int row = ui->Tview_ProdutosSelecionados->currentIndex().row();
@@ -936,8 +954,40 @@ void venda::atualizarBotaoSelecionar()
     ui->Btn_SelecionarProduto->setEnabled(ui->Tview_Produtos->selectionModel()->hasSelection());
 }
 
+void venda::configurarColunasCatalogo()
+{
+    // só Código de barras (4), Descrição (2), Preço (3) e Estoque (1);
+    // esconde o resto sem mexer na query (o código lê as colunas por índice)
+    QTableView *view = ui->Tview_Produtos;
+    for (int col = 0; col < modeloProdutos->columnCount(); ++col)
+        view->setColumnHidden(col, !(col == 1 || col == 2 || col == 3 || col == 4));
+
+    QHeaderView *cabecalho = view->horizontalHeader();
+    cabecalho->setStretchLastSection(false);
+    cabecalho->moveSection(cabecalho->visualIndex(4), 0);
+    cabecalho->moveSection(cabecalho->visualIndex(1), cabecalho->count() - 1);
+    cabecalho->setSectionResizeMode(2, QHeaderView::Stretch);
+    cabecalho->setSectionResizeMode(1, QHeaderView::Fixed);
+    cabecalho->setSectionResizeMode(3, QHeaderView::Fixed);
+    cabecalho->setSectionResizeMode(4, QHeaderView::Fixed);
+    cabecalho->resizeSection(1, 90);
+    cabecalho->resizeSection(3, 100);
+    cabecalho->resizeSection(4, 160);
+}
+
+void venda::focarCatalogo()
+{
+    if (modeloProdutos->rowCount() == 0)
+        return;
+    ui->Tview_Produtos->setFocus();
+    ui->Tview_Produtos->selectRow(0);
+    ui->Tview_Produtos->setCurrentIndex(modeloProdutos->index(0, 2));
+    ui->Tview_Produtos->scrollToTop();
+}
+
 void venda::selecionarPrimeiraLinhaCatalogo()
 {
+    configurarColunasCatalogo();
     if (modeloProdutos->rowCount() > 0)
         ui->Tview_Produtos->selectRow(0);
     atualizarBotaoSelecionar();
@@ -1057,12 +1107,35 @@ void venda::on_Ledit_Pesquisa_returnPressed()
         }
     }
 
-    if (!prodServ.codigoBarrasExiste(barras)) {
-        QMessageBox::warning(this, "Erro", "Esse código de barras não foi registrado ainda.");
+    if (barras.isEmpty())
+        return;
+
+    if (prodServ.codigoBarrasExiste(barras)) {
+        ProdutoDTO prod = prodServ.getProdutoPeloCodBarras(barras);
+        adicionarAoCarrinho(prod.id, prod.descricao, prod.preco, quantidade);
         return;
     }
-    ProdutoDTO prod = prodServ.getProdutoPeloCodBarras(barras);
-    adicionarAoCarrinho(prod.id, prod.descricao, prod.preco, quantidade);
+
+    // só dígitos: é claramente um código de barras que não existe
+    static const QRegularExpression soDigitos(QStringLiteral("^\\d+$"));
+    if (soDigitos.match(barras).hasMatch()) {
+        QMessageBox::warning(this, "Erro", "Esse código de barras não foi registrado ainda.");
+        ui->Ledit_Pesquisa->selectAll();
+        return;
+    }
+
+    // texto: pesquisa por nome; um único resultado é adicionado direto
+    prodServ.pesquisar(barras, modeloProdutos);
+    selecionarPrimeiraLinhaCatalogo();
+    if (modeloProdutos->rowCount() == 1 && !modeloProdutos->canFetchMore()) {
+        adicionarAoCarrinho(modeloProdutos->data(modeloProdutos->index(0, 0)).toLongLong(),
+                            modeloProdutos->data(modeloProdutos->index(0, 2)).toString(),
+                            modeloProdutos->data(modeloProdutos->index(0, 3)).toDouble(), quantidade);
+    } else if (modeloProdutos->rowCount() > 0) {
+        focarCatalogo();
+    } else {
+        ui->Ledit_Pesquisa->selectAll();
+    }
 }
 
 void venda::on_Btn_CancelarVenda_clicked()

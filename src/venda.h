@@ -46,6 +46,8 @@ protected:
     int adicionarAoCarrinho(qlonglong id, const QString &descricao, double preco, double quantidade);
     void atualizarBotaoSelecionar();
     void selecionarPrimeiraLinhaCatalogo();
+    void configurarColunasCatalogo();
+    void focarCatalogo();
     int inserirLinhaCarrinho(int posicao, qlonglong id, const QString &descricao,
                              double preco, double quantidade);
     void destacarItem(int row);
