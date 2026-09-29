@@ -114,6 +114,24 @@ jobs:
           ao iniciar. Depois é só abrir o QEstoqueLoja.exe.
           EOF
 
+      # Só SQLite e PostgreSQL são usados: os outros drivers de banco (Mimer, ODBC, Firebird...) trariam
+      # dependências que não existem nos computadores da loja.
+      - name: Deixar só os drivers de banco usados
+        shell: bash
+        run: find dist/sqldrivers -name "*.dll" ! -name qsqlite.dll ! -name qsqlpsql.dll -print -delete
+
+      # Runtime do Visual C++ junto do programa (não depende da versão instalada no computador)
+      - name: Copiar o runtime do Visual C++
+        shell: pwsh
+        run: |
+          $crt = Get-ChildItem "$env:VCINSTALLDIR\Redist\MSVC" -Recurse -Directory -Filter 'Microsoft.VC*.CRT' |
+                 Where-Object { $_.FullName -match '\\x64\\' -and $_.FullName -notmatch 'onecore|debug' } |
+                 Select-Object -First 1
+          if (-not $crt) { throw 'Runtime do Visual C++ nao encontrado em VCINSTALLDIR\Redist' }
+          Write-Host "Runtime em: $($crt.FullName)"
+          Copy-Item "$($crt.FullName)\*.dll" dist\ -Force
+          Get-ChildItem dist\*140*.dll | ForEach-Object { $_.Name }
+
       # Falha (e não gera o pacote) se faltar alguma DLL que o programa ou as bibliotecas dele precisam
       - name: Conferir se o pacote está completo
         shell: pwsh
