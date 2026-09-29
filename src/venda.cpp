@@ -108,11 +108,11 @@ venda::venda(QWidget *parent) :
 
     ui->Tview_Produtos->setColumnWidth(2, 260);
     ui->Tview_Produtos->setColumnWidth(1, 85);
-    ui->Tview_ProdutosSelecionados->setColumnWidth(0, 70);
-    ui->Tview_ProdutosSelecionados->setColumnWidth(1, 130);
+    ui->Tview_ProdutosSelecionados->setColumnWidth(0, 100);
+    ui->Tview_ProdutosSelecionados->setColumnWidth(1, 170);
     ui->Tview_ProdutosSelecionados->setColumnWidth(2, 300);
-    ui->Tview_ProdutosSelecionados->setColumnWidth(3, 160);
-    ui->Tview_ProdutosSelecionados->setColumnWidth(4, 200);
+    ui->Tview_ProdutosSelecionados->setColumnWidth(3, 210);
+    ui->Tview_ProdutosSelecionados->setColumnWidth(4, 130);
     ui->Tview_ProdutosSelecionados->setColumnWidth(5, 150);
     QHeaderView *cabecalhoCarrinho = ui->Tview_ProdutosSelecionados->horizontalHeader();
     cabecalhoCarrinho->setStretchLastSection(false);
@@ -755,6 +755,8 @@ void venda::definirClientePadrao()
     if (clientesComId.isEmpty())
         return;
     const QString primeiroCliente = clientesComId.first();
+    // sem sinais: evita abrir o popup do completer solto na tela
+    const QSignalBlocker bloqueio(ui->Ledit_Cliente);
     ui->Ledit_Cliente->setText(primeiroCliente);
     const int posFinalNome = primeiroCliente.indexOf(" (ID:");
     if (posFinalNome != -1)
@@ -1138,7 +1140,7 @@ void venda::configurarColunasCatalogo()
     cabecalho->setSectionResizeMode(1, QHeaderView::Fixed);
     cabecalho->setSectionResizeMode(3, QHeaderView::Fixed);
     cabecalho->setSectionResizeMode(4, QHeaderView::Fixed);
-    cabecalho->resizeSection(1, 90);
+    cabecalho->resizeSection(1, 110);
     cabecalho->resizeSection(3, 100);
     cabecalho->resizeSection(4, 160);
 }
