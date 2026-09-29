@@ -568,8 +568,13 @@ void MainWindow::on_Btn_Entradas_clicked()
         connect(entradas, &Entradas::produtoAdicionado, this,
                 &MainWindow::atualizarTableview);
     }else{
-        QMessageBox::warning(this, "Aviso", "Para visualizar as notas de entrada é "
-                                            "necessário estar no ambiente 'Produção'.");
+        QString motivo;
+        if (!configDTO.emitNfFiscal)
+            motivo = "a emissão de Notas Fiscais está desligada nas configurações";
+        else
+            motivo = "o ambiente fiscal está em 'Homologação' (é necessário o ambiente 'Produção')";
+        QMessageBox::warning(this, "Aviso", "Não foi possível abrir as notas de entrada: "
+                                            + motivo + ".");
     }
 
 }

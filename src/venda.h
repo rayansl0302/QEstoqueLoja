@@ -43,6 +43,9 @@ protected:
     void atualizarListaCliente();
     void atualizarTotalProduto();
     void selecionarClienteNovo();
+    int adicionarAoCarrinho(qlonglong id, const QString &descricao, double preco, double quantidade);
+    void atualizarBotaoSelecionar();
+    void selecionarPrimeiraLinhaCatalogo();
 
 private slots:
     void on_Btn_SelecionarProduto_clicked();

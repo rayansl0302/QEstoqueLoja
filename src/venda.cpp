@@ -58,14 +58,12 @@ venda::venda(QWidget *parent) :
     modeloSelecionados->setHorizontalHeaderItem(4, new QStandardItem("Total"));
     ui->Tview_ProdutosSelecionados->setModel(modeloSelecionados);
 
-    QModelIndex firstIndex = modeloProdutos->index(0, 0);
-    ui->Tview_Produtos->selectionModel()->select(firstIndex, QItemSelectionModel::Select);
-
     QItemSelectionModel *selectionModel = ui->Tview_ProdutosSelecionados->selectionModel();
     connect(selectionModel, &QItemSelectionModel::selectionChanged, this, &venda::handleSelectionChange);
     QItemSelectionModel *selectionModelProdutos = ui->Tview_Produtos->selectionModel();
     connect(selectionModelProdutos, &QItemSelectionModel::selectionChanged, this,
             &venda::handleSelectionChangeProdutos);
+    selecionarPrimeiraLinhaCatalogo();
 
     ui->Tview_Produtos->setColumnWidth(2, 260);
     ui->Tview_Produtos->setColumnWidth(1, 85);
@@ -85,8 +83,6 @@ venda::venda(QWidget *parent) :
 
     ui->Tview_ProdutosSelecionados->setEditTriggers(
         QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked);
-
-    ui->Btn_SelecionarProduto->setEnabled(false);
 
     connect(modeloSelecionados, &QStandardItemModel::itemChanged, this, [=]() {
         ui->Lbl_Total->setText(Total());
@@ -720,30 +716,51 @@ qlonglong venda::validarCliente(bool mostrarMensagens)
 
 void venda::on_Btn_SelecionarProduto_clicked()
 {
-    QItemSelectionModel *sel = ui->Tview_Produtos->selectionModel();
-    QModelIndex idx = sel->selectedIndexes().first();
-    QString idProduto   = ui->Tview_Produtos->model()->data(ui->Tview_Produtos->model()->index(idx.row(), 0)).toString();
-    QString descProduto = ui->Tview_Produtos->model()->data(ui->Tview_Produtos->model()->index(idx.row(), 2)).toString();
-    float   precoProduto = ui->Tview_Produtos->model()->data(ui->Tview_Produtos->model()->index(idx.row(), 3)).toFloat();
+    const QModelIndexList selecionados = ui->Tview_Produtos->selectionModel()->selectedRows();
+    if (selecionados.isEmpty())
+        return;
 
+    const int row = selecionados.first().row();
+    QAbstractItemModel *m = ui->Tview_Produtos->model();
+    adicionarAoCarrinho(m->data(m->index(row, 0)).toLongLong(),
+                        m->data(m->index(row, 2)).toString(),
+                        m->data(m->index(row, 3)).toDouble(), 1);
+}
+
+int venda::adicionarAoCarrinho(qlonglong id, const QString &descricao, double preco, double quantidade)
+{
     QStandardItem *itemPreco = new QStandardItem();
-    itemPreco->setData(precoProduto, Qt::EditRole);
-    itemPreco->setText(portugues.toString(precoProduto, 'f', 2));
+    itemPreco->setData(preco, Qt::EditRole);
+    itemPreco->setText(portugues.toString(preco, 'f', 2));
 
     QStandardItem *itemTotal = new QStandardItem();
-    itemTotal->setData(precoProduto, Qt::EditRole);
-    itemTotal->setText(portugues.toString(precoProduto, 'f', 2));
+    itemTotal->setData(quantidade * preco, Qt::EditRole);
+    itemTotal->setText(portugues.toString(quantidade * preco, 'f', 2));
 
-    modeloSelecionados->appendRow({new QStandardItem(idProduto), new QStandardItem("1"),
-                                   new QStandardItem(descProduto), itemPreco, itemTotal});
+    modeloSelecionados->appendRow({new QStandardItem(QString::number(id)),
+                                   new QStandardItem(portugues.toString(quantidade)),
+                                   new QStandardItem(descricao), itemPreco, itemTotal});
     ui->Lbl_Total->setText(Total());
+    return modeloSelecionados->rowCount() - 1;
+}
+
+void venda::atualizarBotaoSelecionar()
+{
+    ui->Btn_SelecionarProduto->setEnabled(ui->Tview_Produtos->selectionModel()->hasSelection());
+}
+
+void venda::selecionarPrimeiraLinhaCatalogo()
+{
+    if (modeloProdutos->rowCount() > 0)
+        ui->Tview_Produtos->selectRow(0);
+    atualizarBotaoSelecionar();
 }
 
 void venda::handleSelectionChange(const QItemSelection &, const QItemSelection &) {}
 
-void venda::handleSelectionChangeProdutos(const QItemSelection &selected, const QItemSelection &)
+void venda::handleSelectionChangeProdutos(const QItemSelection &, const QItemSelection &)
 {
-    ui->Btn_SelecionarProduto->setEnabled(!selected.indexes().isEmpty());
+    atualizarBotaoSelecionar();
 }
 
 void venda::keyPressEvent(QKeyEvent *event)
@@ -785,6 +802,7 @@ void venda::on_Btn_Pesquisa_clicked()
     prodServ.pesquisar(ui->Ledit_Pesquisa->text(), modeloProdutos);
     if (!modeloProdutos)
         QMessageBox::warning(this, "Erro", "Erro ao realizar a pesquisa.");
+    selecionarPrimeiraLinhaCatalogo();
 }
 
 QList<ProdutoVendidoDTO> venda::obterProdutosSelecionados()
@@ -842,15 +860,8 @@ void venda::on_Ledit_Pesquisa_returnPressed()
         return;
     }
     ProdutoDTO prod = prodServ.getProdutoPeloCodBarras(barras);
-    modeloSelecionados->appendRow({
-        new QStandardItem(QString::number(prod.id)),
-        new QStandardItem("1"),
-        new QStandardItem(prod.descricao),
-        new QStandardItem(portugues.toString(prod.preco))
-    });
-    atualizarTotalProduto();
+    adicionarAoCarrinho(prod.id, prod.descricao, prod.preco, 1);
     ui->Ledit_Pesquisa->clear();
-    ui->Lbl_Total->setText(Total());
 }
 
 void venda::on_Btn_CancelarVenda_clicked()
