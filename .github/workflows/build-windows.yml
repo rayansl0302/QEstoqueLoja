@@ -33,10 +33,11 @@ jobs:
       - name: Configurar (CMake)
         shell: bash
         run: |
+          # o zint.h fica em libs-externas/zint/backend e o projeto o inclui como "zint.h"
+          export CXXFLAGS="/I$(cygpath -m "$GITHUB_WORKSPACE")/libs-externas/zint/backend"
           cmake -S . -B build -G "Visual Studio 17 2022" -A x64 \
             -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" \
-            -DZINT_USE_PNG=OFF -DZINT_USE_QT=OFF -DZINT_FRONTEND=OFF -DZINT_TEST=OFF \
-            -DZINT_STATIC=ON -DZINT_SHARED=OFF
+            -DZINT_USE_PNG=OFF -DZINT_USE_QT=OFF -DZINT_FRONTEND=OFF -DZINT_TEST=OFF
 
       - name: Compilar
         shell: bash
@@ -49,6 +50,8 @@ jobs:
           EXE=$(find build -name QEstoqueLoja.exe | head -1)
           echo "Executável: $EXE"
           cp "$EXE" dist/
+          # biblioteca do Zint (código de barras), se foi gerada como DLL
+          find build -name "zint.dll" -exec cp {} dist/ \;
           "$QT_ROOT_DIR/bin/windeployqt.exe" --release --no-translations dist/QEstoqueLoja.exe
           cp -r recursos dist/recursos
           cp -r reports dist/reports
