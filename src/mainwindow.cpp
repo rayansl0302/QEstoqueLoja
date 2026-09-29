@@ -562,15 +562,12 @@ void MainWindow::atualizarConfigAcbr(){
 
 void MainWindow::on_Btn_Entradas_clicked()
 {
-    if(configDTO.emitNfFiscal && configDTO.tpAmbFiscal){
-        Entradas *entradas = new Entradas();
-        entradas->show();
-        connect(entradas, &Entradas::produtoAdicionado, this,
-                &MainWindow::atualizarTableview);
-    }else{
-        QMessageBox::warning(this, "Aviso", "Para visualizar as notas de entrada é "
-                                            "necessário estar no ambiente 'Produção'.");
-    }
+    // A tela abre sempre: importar XML funciona sem certificado e a própria tela explica
+    // o que falta para buscar pela chave de acesso (certificado A1 e ambiente de Produção).
+    Entradas *entradas = new Entradas();
+    entradas->show();
+    connect(entradas, &Entradas::produtoAdicionado, this,
+            &MainWindow::atualizarTableview);
 
 }
 

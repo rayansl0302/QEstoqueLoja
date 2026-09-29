@@ -28,6 +28,12 @@
 #include "delegatehora.h"
 #include "util/ibptutil.h"
 #include "infra/apppath_service.h"
+#include "util/chaveacessoutil.h"
+#include "services/acbr_service.h"
+#include <QFileDialog>
+#include <QFileInfo>
+#include <QTimer>
+#include <QApplication>
 
 Entradas::Entradas(QWidget *parent)
     : QWidget(parent)
@@ -57,6 +63,8 @@ Entradas::Entradas(QWidget *parent)
     ui->DateEdt_Ate->setDate(ultimoDia);
 
     ui->Tview_Entradas->selectRow(0);
+
+    atualizarStatusBusca();
 }
 
 Entradas::~Entradas()
@@ -66,6 +74,19 @@ Entradas::~Entradas()
 
 void Entradas::on_Btn_ConsultarDF_clicked()
 {
+    // esta tela abre mesmo sem "Emitir Notas Fiscais": confere e prepara a ACBr para o DF-e
+    auto pode = entradaNfeServ.verificarPodeBuscarPorChave();
+    if (!pode.ok) {
+        QMessageBox::warning(this, "Consulta DF-e", pode.msg);
+        return;
+    }
+    Acbr_service acbrServ;
+    auto cfg = acbrServ.configurarParaDFE();
+    if (!cfg.ok) {
+        QMessageBox::warning(this, "Consulta DF-e", cfg.msg);
+        return;
+    }
+
     ManifestadorDFe *manifestdfe = new ManifestadorDFe(this);
     if(dfeServ.possoConsultar()){
 
@@ -429,3 +450,153 @@ void Entradas::on_DateEdt_Ate_userDateChanged(const QDate &date)
     atualizarTabela(de, ate);
 }
 
+// ─── Entrada pela nota do fornecedor ─────────────────────────────────────────
+
+void Entradas::atualizarStatusBusca()
+{
+    // avisa, já ao abrir, o que falta para buscar pela chave (importar XML sempre funciona)
+    auto pode = entradaNfeServ.verificarPodeBuscarPorChave();
+    ui->Lbl_StatusChave->setVisible(!pode.ok);
+    ui->Lbl_StatusChave->setText(pode.msg);
+}
+
+void Entradas::definirBuscando(bool buscando)
+{
+    emBusca = buscando;
+    ui->Ledit_ChaveAcesso->setEnabled(!buscando);
+    ui->Btn_BuscarChave->setEnabled(!buscando);
+    ui->Btn_ImportarXml->setEnabled(!buscando);
+    ui->Btn_ConsultarDF->setEnabled(!buscando);
+    if (buscando)
+        QApplication::setOverrideCursor(Qt::WaitCursor);
+    else
+        QApplication::restoreOverrideCursor();
+}
+
+void Entradas::selecionarNotaPorId(qlonglong idNota)
+{
+    if (idNota <= 0)
+        return;
+    while (modelEntradas->canFetchMore())
+        modelEntradas->fetchMore();
+    for (int row = 0; row < modelEntradas->rowCount(); ++row) {
+        if (modelEntradas->data(modelEntradas->index(row, 7)).toLongLong() == idNota) {
+            ui->Tview_Entradas->selectRow(row);
+            ui->Tview_Entradas->scrollTo(modelEntradas->index(row, 0));
+            return;
+        }
+    }
+}
+
+void Entradas::on_Ledit_ChaveAcesso_textChanged(const QString &texto)
+{
+    // o leitor de código de barras digita os 44 dígitos de uma vez
+    if (!emBusca && ChaveAcessoUtil::somenteDigitos(texto).size() == 44)
+        QTimer::singleShot(0, this, &Entradas::buscarChave);
+}
+
+void Entradas::on_Ledit_ChaveAcesso_returnPressed()
+{
+    buscarChave();
+}
+
+void Entradas::on_Btn_BuscarChave_clicked()
+{
+    buscarChave();
+}
+
+void Entradas::buscarChave()
+{
+    if (emBusca)
+        return;
+    const QString texto = ui->Ledit_ChaveAcesso->text();
+    if (texto.trimmed().isEmpty())
+        return;
+
+    const ChaveAcessoInfo info = ChaveAcessoUtil::analisar(texto);
+    if (!info.valida) {
+        QMessageBox::warning(this, "Chave de acesso", info.erro);
+        ui->Ledit_ChaveAcesso->setFocus();
+        ui->Ledit_ChaveAcesso->selectAll();
+        return;
+    }
+
+    definirBuscando(true);
+    QCoreApplication::processEvents();
+    const auto r = entradaNfeServ.buscarPorChave(info.chave);
+    definirBuscando(false);
+
+    if (r.ok || r.erro == EntradaNfeErro::Duplicada) {
+        atualizarTabela();
+        selecionarNotaPorId(r.idNota);
+        ui->Ledit_ChaveAcesso->clear();
+        ui->Ledit_ChaveAcesso->setFocus();
+        if (r.ok) {
+            QMessageBox::information(this, "NF-e encontrada",
+                "A nota foi buscada na SEFAZ e está selecionada na lista.\n"
+                "Escolha os produtos e use o botão direito > \"Adicionar ao Estoque\".");
+        } else {
+            QMessageBox::information(this, "NF-e já lançada",
+                "Esta NF-e já estava em Compras. Ela foi selecionada na lista, sem duplicar a entrada.");
+        }
+        return;
+    }
+
+    if (r.erro == EntradaNfeErro::AguardandoXml)
+        QMessageBox::information(this, "Aguardando a SEFAZ", r.msg);
+    else
+        QMessageBox::warning(this, "Buscar NF-e pela chave", r.msg);
+    ui->Ledit_ChaveAcesso->setFocus();
+    ui->Ledit_ChaveAcesso->selectAll();
+    atualizarStatusBusca();
+}
+
+void Entradas::on_Btn_ImportarXml_clicked()
+{
+    const QStringList arquivos = QFileDialog::getOpenFileNames(
+        this, "Importar XML de NF-e", ultimaPastaXml, "XML de NF-e (*.xml);;Todos os arquivos (*)");
+    if (arquivos.isEmpty())
+        return;
+    ultimaPastaXml = QFileInfo(arquivos.first()).absolutePath();
+
+    int importadas = 0, jaLancadas = 0, comProblema = 0;
+    QStringList detalhes;
+    qlonglong ultimoId = 0;
+
+    for (const QString &arquivo : arquivos) {
+        const QString nome = QFileInfo(arquivo).fileName();
+        auto r = entradaNfeServ.importarXml(arquivo);
+
+        if (!r.ok && r.erro == EntradaNfeErro::DestinatarioDiferente) {
+            auto resp = QMessageBox::question(this, "Destinatário diferente",
+                nome + "\n\n" + r.msg + "\n\nImportar mesmo assim?",
+                QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+            if (resp == QMessageBox::Yes)
+                r = entradaNfeServ.importarXml(arquivo, /*ignorarDestinatario=*/true);
+        }
+
+        if (r.ok) {
+            ++importadas;
+            ultimoId = r.idNota;
+        } else if (r.erro == EntradaNfeErro::Duplicada) {
+            ++jaLancadas;
+            ultimoId = r.idNota;
+            detalhes << nome + ": já estava lançada";
+        } else {
+            ++comProblema;
+            detalhes << nome + ": " + r.msg;
+        }
+    }
+
+    atualizarTabela();
+    selecionarNotaPorId(ultimoId);
+
+    QString resumo = QString("Importadas: %1\nJá lançadas (ignoradas): %2\nNão importadas: %3")
+                         .arg(importadas).arg(jaLancadas).arg(comProblema);
+    if (!detalhes.isEmpty())
+        resumo += "\n\n" + detalhes.join("\n");
+    if (comProblema > 0)
+        QMessageBox::warning(this, "Importar XML", resumo);
+    else
+        QMessageBox::information(this, "Importar XML", resumo);
+}
