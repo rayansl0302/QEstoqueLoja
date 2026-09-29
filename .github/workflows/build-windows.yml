@@ -73,6 +73,11 @@ jobs:
           # biblioteca de relatórios (QtRPT), compilada acima
           find libs-externas -name "QtRPT.dll" -path "*bin/release*" -exec cp {} dist/ \;
           "$QT_ROOT_DIR/bin/windeployqt.exe" --release --no-translations dist/QEstoqueLoja.exe
+          # driver do PostgreSQL do Qt (o programa usa PostgreSQL em rede); precisa ser o mesmo Qt do .exe
+          mkdir -p dist/sqldrivers
+          cp "$QT_ROOT_DIR/plugins/sqldrivers/qsqlpsql.dll" dist/sqldrivers/ || echo "qsqlpsql.dll nao encontrado no Qt"
+          # identificação da versão (o script de atualização mostra este arquivo)
+          echo "commit ${GITHUB_SHA} - branch ${GITHUB_REF_NAME} - compilado em $(date -u +%Y-%m-%d\ %H:%M) UTC" > dist/VERSAO.txt
           cp -r recursos dist/recursos
           cp -r reports dist/reports
           cat > dist/LEIA-ME.txt <<'EOF'
