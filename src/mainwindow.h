@@ -17,6 +17,7 @@
 #include <QSet>
 #include <QRandomGenerator>
 #include <QKeyEvent>
+#include <QPointer>
 #include "configuracao.h"
 #include "subclass/customlineedit.h"
 #include "nota/acbrmanager.h"
@@ -41,6 +42,7 @@ public:
     QSqlDatabase db;
     QSqlQueryModel* model = nullptr;
     void atualizarTableview();
+    void abrirPdv();
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
     QLocale portugues;
@@ -59,6 +61,8 @@ private slots:
     void on_Btn_Alterar_clicked();
 
     void on_Btn_Venda_clicked();
+
+    void on_Btn_PDV_clicked();
 
     void on_Btn_Relatorios_clicked();
 
@@ -118,6 +122,7 @@ private:
     Config_service *confServ = new Config_service(this);
     ConfigDTO configDTO;
     ContingenciaService *contingenciaService = nullptr;
+    QPointer<QWidget> pdvAberto;
 
 
     void setarIconesJanela();

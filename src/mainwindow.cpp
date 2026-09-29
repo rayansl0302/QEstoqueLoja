@@ -201,6 +201,7 @@ void MainWindow::setarIconesJanela(){
 
     ui->Btn_AddProd->setIcon(iconAddProduto);
     ui->Btn_Venda->setIcon(iconBtnVenda);
+    ui->Btn_PDV->setIcon(iconAddProduto);
     ui->Btn_Alterar->setIcon(iconAlterarProduto);
     ui->Btn_Delete->setIcon(iconDelete);
     ui->Btn_Pesquisa->setIcon(iconPesquisa);
@@ -386,9 +387,29 @@ void MainWindow::imprimirEtiqueta3(){
 
 void MainWindow::on_actionRealizar_Venda_triggered()
 {
-    venda *inserirVenda = new venda;
-    //inserirVenda->setWindowModality(Qt::ApplicationModal);
-    inserirVenda->show();
+    abrirPdv();
+}
+
+void MainWindow::on_Btn_PDV_clicked()
+{
+    abrirPdv();
+}
+
+// Abre direto a tela de venda (maximizada). Se já estiver aberta, apenas a traz para frente.
+void MainWindow::abrirPdv()
+{
+    if (pdvAberto) {
+        pdvAberto->showMaximized();
+        pdvAberto->raise();
+        pdvAberto->activateWindow();
+        return;
+    }
+
+    venda *pdv = new venda;
+    pdv->setAttribute(Qt::WA_DeleteOnClose);
+    connect(pdv, &venda::vendaConcluida, this, &MainWindow::atualizarTableview);
+    pdvAberto = pdv;
+    pdv->showMaximized();
 }
 
 

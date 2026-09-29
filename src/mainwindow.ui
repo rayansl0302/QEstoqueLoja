@@ -366,6 +366,50 @@ Produto</string>
                </widget>
               </item>
               <item>
+               <widget class="QPushButton" name="Btn_PDV">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>115</width>
+                  <height>43</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>115</width>
+                  <height>43</height>
+                 </size>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">
+#Btn_PDV:hover {
+  background-color: rgb(03, 75, 119);
+}
+#Btn_PDV:pressed {
+  background-color: rgb(153, 193, 241);
+}
+                 </string>
+                </property>
+                <property name="toolTip">
+                 <string>Abre direto a tela de venda (F5)</string>
+                </property>
+                <property name="text">
+                 <string>PDV (F5)</string>
+                </property>
+                <property name="iconSize">
+                 <size>
+                  <width>26</width>
+                  <height>26</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+              <item>
                <widget class="QPushButton" name="Btn_Relatorios">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">

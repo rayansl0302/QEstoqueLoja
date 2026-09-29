@@ -49,5 +49,8 @@
         }
         MainWindow w;
         w.show();
+        // atalho da Área de Trabalho: QEstoqueLoja --pdv abre direto a tela de venda
+        if (QCoreApplication::arguments().contains("--pdv"))
+            w.abrirPdv();
         return a.exec();
     }

@@ -122,7 +122,7 @@ void Vendas::on_Btn_InserirVenda_clicked()
     connect(inserirVenda, &venda::vendaConcluida, this, &Vendas::vendaConcluidaVendas);
     connect(inserirVenda, &venda::vendaConcluida, this, &Vendas::atualizarTabelas);
 
-    inserirVenda->show();
+    inserirVenda->showMaximized();
 }
 
 void Vendas::atualizarTabelas(){
