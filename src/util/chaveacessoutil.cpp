@@ -1,4 +1,5 @@
 #include "chaveacessoutil.h"
+#include <QStringList>
 
 QString ChaveAcessoUtil::somenteDigitos(const QString &texto)
 {
