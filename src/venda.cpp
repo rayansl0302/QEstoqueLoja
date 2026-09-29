@@ -15,10 +15,27 @@
 #include <QCompleter>
 #include <QStringListModel>
 #include <QMenu>
+#include <QHeaderView>
+#include <QKeyEvent>
+#include <QRegularExpression>
+#include <QShortcut>
+#include <cmath>
+#include "delegateacoescarrinho.h"
 #include "inserircliente.h"
 #include "infojanelaprod.h"
 #include "../services/Produto_service.h"
 #include "services/config_service.h"
+
+namespace {
+// 1 -> "1", 1.5 -> "1,50" (sem separador de milhar, para o editor aceitar de volta)
+QString formatarQuantidade(const QLocale &base, double q)
+{
+    QLocale l = base;
+    l.setNumberOptions(l.numberOptions() | QLocale::OmitGroupSeparator);
+    const bool inteira = std::fabs(q - std::round(q)) < 1e-9;
+    return l.toString(q, 'f', inteira ? 0 : 2);
+}
+}
 
 venda::venda(QWidget *parent) :
     QWidget(parent),
@@ -56,6 +73,7 @@ venda::venda(QWidget *parent) :
     modeloSelecionados->setHorizontalHeaderItem(2, new QStandardItem("Descrição"));
     modeloSelecionados->setHorizontalHeaderItem(3, new QStandardItem("Preço Unitário Vendido"));
     modeloSelecionados->setHorizontalHeaderItem(4, new QStandardItem("Total"));
+    modeloSelecionados->setHorizontalHeaderItem(5, new QStandardItem("Ações"));
     ui->Tview_ProdutosSelecionados->setModel(modeloSelecionados);
 
     QItemSelectionModel *selectionModel = ui->Tview_ProdutosSelecionados->selectionModel();
@@ -72,6 +90,40 @@ venda::venda(QWidget *parent) :
     ui->Tview_ProdutosSelecionados->setColumnWidth(2, 300);
     ui->Tview_ProdutosSelecionados->setColumnWidth(3, 160);
     ui->Tview_ProdutosSelecionados->setColumnWidth(4, 200);
+    ui->Tview_ProdutosSelecionados->setColumnWidth(5, 150);
+    QHeaderView *cabecalhoCarrinho = ui->Tview_ProdutosSelecionados->horizontalHeader();
+    cabecalhoCarrinho->setStretchLastSection(false);
+    cabecalhoCarrinho->setSectionResizeMode(2, QHeaderView::Stretch);
+    cabecalhoCarrinho->setSectionResizeMode(5, QHeaderView::Fixed);
+    ui->Tview_ProdutosSelecionados->verticalHeader()->setDefaultSectionSize(38);
+
+    // botões [−] [+] [lixeira] em cada linha do carrinho
+    DelegateAcoesCarrinho *delegateAcoes = new DelegateAcoesCarrinho(this);
+    ui->Tview_ProdutosSelecionados->setItemDelegateForColumn(5, delegateAcoes);
+    connect(delegateAcoes, &DelegateAcoesCarrinho::menosClicado, this,
+            [this](int linha) { alterarQuantidade(linha, -1); }, Qt::QueuedConnection);
+    connect(delegateAcoes, &DelegateAcoesCarrinho::maisClicado, this,
+            [this](int linha) { alterarQuantidade(linha, +1); }, Qt::QueuedConnection);
+    connect(delegateAcoes, &DelegateAcoesCarrinho::removerClicado, this,
+            [this](int linha) { removerItem(linha); }, Qt::QueuedConnection);
+    ui->Tview_ProdutosSelecionados->installEventFilter(this);
+
+    // desfazer a última remoção
+    desfazerTimer = new QTimer(this);
+    desfazerTimer->setSingleShot(true);
+    desfazerTimer->setInterval(8000);
+    connect(desfazerTimer, &QTimer::timeout, this, [this]() {
+        temRemovido = false;
+        ui->Btn_DesfazerRemocao->hide();
+    });
+    connect(ui->Btn_DesfazerRemocao, &QPushButton::clicked, this, &venda::desfazerRemocao);
+    QShortcut *atalhoDesfazer = new QShortcut(QKeySequence(Qt::Key_F8), this);
+    connect(atalhoDesfazer, &QShortcut::activated, this, &venda::desfazerRemocao);
+
+    // contagem de itens ao lado do total
+    connect(modeloSelecionados, &QStandardItemModel::itemChanged,  this, &venda::atualizarContagemItens);
+    connect(modeloSelecionados, &QStandardItemModel::rowsInserted, this, &venda::atualizarContagemItens);
+    connect(modeloSelecionados, &QStandardItemModel::rowsRemoved,  this, &venda::atualizarContagemItens);
 
     ui->DateEdt_Venda->setDateTime(QDateTime::currentDateTime());
 
@@ -124,7 +176,26 @@ venda::venda(QWidget *parent) :
         ui->Lbl_TpAmb->setStyleSheet("color: white; background-color: orange; font-weight: bold; padding: 4px; border-radius: 5px;");
     }
 
-    connect(ui->Tview_Produtos, &QTableView::doubleClicked, this, &venda::verProd);
+    // duplo clique adiciona ao carrinho; a ficha do produto fica no menu de contexto
+    connect(ui->Tview_Produtos, &QTableView::doubleClicked, this, [this](const QModelIndex &idx) {
+        ui->Tview_Produtos->selectRow(idx.row());
+        on_Btn_SelecionarProduto_clicked();
+    });
+    ui->Tview_Produtos->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->Tview_Produtos, &QWidget::customContextMenuRequested, this, [this](const QPoint &pos) {
+        const QModelIndex idx = ui->Tview_Produtos->indexAt(pos);
+        if (!idx.isValid())
+            return;
+        ui->Tview_Produtos->selectRow(idx.row());
+        QMenu menu(this);
+        QAction *acaoAdicionar = menu.addAction("Adicionar ao carrinho");
+        QAction *acaoVer = menu.addAction("Ver produto");
+        QAction *escolhida = menu.exec(ui->Tview_Produtos->viewport()->mapToGlobal(pos));
+        if (escolhida == acaoAdicionar)
+            on_Btn_SelecionarProduto_clicked();
+        else if (escolhida == acaoVer)
+            verProd();
+    });
 
     // payment validators
     QDoubleValidator *validador = new QDoubleValidator(0.0, 9999.99, 2, this);
@@ -727,7 +798,8 @@ void venda::on_Btn_SelecionarProduto_clicked()
                         m->data(m->index(row, 3)).toDouble(), 1);
 }
 
-int venda::adicionarAoCarrinho(qlonglong id, const QString &descricao, double preco, double quantidade)
+int venda::inserirLinhaCarrinho(int posicao, qlonglong id, const QString &descricao,
+                                double preco, double quantidade)
 {
     QStandardItem *itemPreco = new QStandardItem();
     itemPreco->setData(preco, Qt::EditRole);
@@ -737,11 +809,126 @@ int venda::adicionarAoCarrinho(qlonglong id, const QString &descricao, double pr
     itemTotal->setData(quantidade * preco, Qt::EditRole);
     itemTotal->setText(portugues.toString(quantidade * preco, 'f', 2));
 
-    modeloSelecionados->appendRow({new QStandardItem(QString::number(id)),
-                                   new QStandardItem(portugues.toString(quantidade)),
-                                   new QStandardItem(descricao), itemPreco, itemTotal});
+    posicao = qBound(0, posicao, modeloSelecionados->rowCount());
+    modeloSelecionados->insertRow(posicao, {new QStandardItem(QString::number(id)),
+                                            new QStandardItem(formatarQuantidade(portugues, quantidade)),
+                                            new QStandardItem(descricao), itemPreco, itemTotal,
+                                            new QStandardItem()});
+    return posicao;
+}
+
+int venda::adicionarAoCarrinho(qlonglong id, const QString &descricao, double preco, double quantidade)
+{
+    int row = -1;
+    for (int r = 0; r < modeloSelecionados->rowCount(); ++r) {
+        if (modeloSelecionados->item(r, 0)->text().toLongLong() == id) {
+            row = r;
+            break;
+        }
+    }
+
+    if (row >= 0) {
+        const double atual = portugues.toDouble(modeloSelecionados->item(row, 1)->text());
+        modeloSelecionados->item(row, 1)->setText(formatarQuantidade(portugues, atual + quantidade));
+    } else {
+        row = inserirLinhaCarrinho(modeloSelecionados->rowCount(), id, descricao, preco, quantidade);
+    }
+
     ui->Lbl_Total->setText(Total());
-    return modeloSelecionados->rowCount() - 1;
+    destacarItem(row);
+    ui->Ledit_Pesquisa->clear();
+    ui->Ledit_Pesquisa->setFocus();
+    return row;
+}
+
+void venda::destacarItem(int row)
+{
+    if (row < 0 || row >= modeloSelecionados->rowCount())
+        return;
+    const QModelIndex idx = modeloSelecionados->index(row, 2);
+    ui->Tview_ProdutosSelecionados->setCurrentIndex(idx);
+    ui->Tview_ProdutosSelecionados->scrollTo(idx);
+}
+
+void venda::alterarQuantidade(int row, int delta)
+{
+    if (row < 0 || row >= modeloSelecionados->rowCount())
+        return;
+    const double atual = portugues.toDouble(modeloSelecionados->item(row, 1)->text());
+    const double nova = atual + delta;
+    if (nova <= 0) {
+        removerItem(row);
+        return;
+    }
+    modeloSelecionados->item(row, 1)->setText(formatarQuantidade(portugues, nova));
+    ui->Lbl_Total->setText(Total());
+    destacarItem(row);
+}
+
+void venda::removerItem(int row)
+{
+    if (row < 0 || row >= modeloSelecionados->rowCount())
+        return;
+
+    ultimoRemovido.id = modeloSelecionados->item(row, 0)->text().toLongLong();
+    ultimoRemovido.descricao = modeloSelecionados->item(row, 2)->text();
+    ultimoRemovido.quantidade = portugues.toDouble(modeloSelecionados->item(row, 1)->text());
+    ultimoRemovido.preco = portugues.toDouble(modeloSelecionados->item(row, 3)->text());
+    ultimoRemovido.linha = row;
+    temRemovido = true;
+
+    modeloSelecionados->removeRow(row);
+    ui->Lbl_Total->setText(Total());
+    if (modeloSelecionados->rowCount() > 0)
+        destacarItem(qMin(row, modeloSelecionados->rowCount() - 1));
+
+    const QString desc = ultimoRemovido.descricao.left(28);
+    ui->Btn_DesfazerRemocao->setText(QString("Desfazer remoção: %1 (F8)").arg(desc));
+    ui->Btn_DesfazerRemocao->show();
+    desfazerTimer->start();
+}
+
+void venda::desfazerRemocao()
+{
+    if (!temRemovido)
+        return;
+    temRemovido = false;
+    desfazerTimer->stop();
+    ui->Btn_DesfazerRemocao->hide();
+
+    const int row = inserirLinhaCarrinho(ultimoRemovido.linha, ultimoRemovido.id,
+                                         ultimoRemovido.descricao, ultimoRemovido.preco,
+                                         ultimoRemovido.quantidade);
+    ui->Lbl_Total->setText(Total());
+    destacarItem(row);
+}
+
+void venda::atualizarContagemItens()
+{
+    double unidades = 0;
+    for (int r = 0; r < modeloSelecionados->rowCount(); ++r) {
+        if (QStandardItem *it = modeloSelecionados->item(r, 1))
+            unidades += portugues.toDouble(it->text());
+    }
+    ui->Lbl_QtdItens->setText(QString("%1 %2").arg(formatarQuantidade(portugues, unidades),
+                                                   unidades == 1 ? "item" : "itens"));
+}
+
+bool venda::eventFilter(QObject *obj, QEvent *event)
+{
+    if (obj == ui->Tview_ProdutosSelecionados && event->type() == QEvent::KeyPress) {
+        const int key = static_cast<QKeyEvent *>(event)->key();
+        const int row = ui->Tview_ProdutosSelecionados->currentIndex().row();
+        if (key == Qt::Key_Plus) {
+            alterarQuantidade(row, +1);
+            return true;
+        }
+        if (key == Qt::Key_Minus) {
+            alterarQuantidade(row, -1);
+            return true;
+        }
+    }
+    return QWidget::eventFilter(obj, event);
 }
 
 void venda::atualizarBotaoSelecionar()
@@ -848,20 +1035,34 @@ void venda::on_Tview_ProdutosSelecionados_customContextMenuRequested(const QPoin
 
 void venda::deletarProd()
 {
-    modeloSelecionados->removeRow(ui->Tview_ProdutosSelecionados->currentIndex().row());
-    ui->Lbl_Total->setText(Total());
+    removerItem(ui->Tview_ProdutosSelecionados->currentIndex().row());
 }
 
 void venda::on_Ledit_Pesquisa_returnPressed()
 {
-    QString barras = ui->Ledit_Pesquisa->text();
+    QString barras = ui->Ledit_Pesquisa->text().trimmed();
+
+    // multiplicador: "3*7891234567890" adiciona 3 unidades
+    double quantidade = 1;
+    static const QRegularExpression multiplicador(QStringLiteral("^(\\d+(?:[.,]\\d+)?)\\s*\\*\\s*(.+)$"));
+    const QRegularExpressionMatch m = multiplicador.match(barras);
+    if (m.hasMatch()) {
+        QString qtdTexto = m.captured(1);
+        qtdTexto.replace(',', '.');
+        quantidade = qtdTexto.toDouble();
+        barras = m.captured(2).trimmed();
+        if (quantidade <= 0) {
+            QMessageBox::warning(this, "Erro", "A quantidade deve ser maior que zero.");
+            return;
+        }
+    }
+
     if (!prodServ.codigoBarrasExiste(barras)) {
         QMessageBox::warning(this, "Erro", "Esse código de barras não foi registrado ainda.");
         return;
     }
     ProdutoDTO prod = prodServ.getProdutoPeloCodBarras(barras);
-    adicionarAoCarrinho(prod.id, prod.descricao, prod.preco, 1);
-    ui->Ledit_Pesquisa->clear();
+    adicionarAoCarrinho(prod.id, prod.descricao, prod.preco, quantidade);
 }
 
 void venda::on_Btn_CancelarVenda_clicked()

@@ -46,6 +46,14 @@ protected:
     int adicionarAoCarrinho(qlonglong id, const QString &descricao, double preco, double quantidade);
     void atualizarBotaoSelecionar();
     void selecionarPrimeiraLinhaCatalogo();
+    int inserirLinhaCarrinho(int posicao, qlonglong id, const QString &descricao,
+                             double preco, double quantidade);
+    void destacarItem(int row);
+    void alterarQuantidade(int row, int delta);
+    void removerItem(int row);
+    void desfazerRemocao();
+    void atualizarContagemItens();
+    bool eventFilter(QObject *obj, QEvent *event) override;
 
 private slots:
     void on_Btn_SelecionarProduto_clicked();
@@ -101,6 +109,17 @@ private:
     RascunhoVenda_service rascunhoServ;
     RascunhoVendaDTO rascunhoPendente;
     bool temRascunhoPendente = false;
+
+    struct ItemRemovido {
+        qlonglong id = 0;
+        QString descricao;
+        double quantidade = 0;
+        double preco = 0;
+        int linha = 0;
+    };
+    ItemRemovido ultimoRemovido;
+    bool temRemovido = false;
+    QTimer *desfazerTimer = nullptr;
 
 signals:
     void vendaConcluida();
