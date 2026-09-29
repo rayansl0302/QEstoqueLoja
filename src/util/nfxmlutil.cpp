@@ -323,16 +323,21 @@ QList<ProdutoNotaDTO> NfXmlUtil::carregarProdutosDaNFe(const QString &xml_path, 
 
         // -------------------- PIS --------------------
         QDomNodeList listaPIS = imposto.elementsByTagName("PISOutr");
-        if (listaPIS.isEmpty())
-            listaPIS = imposto.elementsByTagName("PISNT");
+        for (const QString &grupoPis : {"PISNT", "PISAliq", "PISQtde"}) {
+            if (!listaPIS.isEmpty())
+                break;
+            listaPIS = imposto.elementsByTagName(grupoPis);
+        }
 
-        if (!listaPIS.isEmpty())
+        if (!listaPIS.isEmpty()) {
             p.pis = listaPIS.at(0).firstChildElement("CST").text();
-        else
+            QString aliquota = listaPIS.at(0).firstChildElement("pPIS").text();
+            p.aliquotaIcms = aliquota.replace(",", ".").toDouble();
+        } else {
+            // nota sem grupo de PIS reconhecido: antes acessava at(0) de lista vazia
             p.pis = "";
-
-        QString aliquota = listaPIS.at(0).firstChildElement("pPIS").text();
-        p.aliquotaIcms = aliquota.replace(",", ".").toDouble();
+            p.aliquotaIcms = 0;
+        }
 
         lista.append(p);
     }

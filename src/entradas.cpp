@@ -27,6 +27,7 @@
 #include <QDebug>
 #include "delegatehora.h"
 #include "util/ibptutil.h"
+#include "infra/apppath_service.h"
 
 Entradas::Entradas(QWidget *parent)
     : QWidget(parent)
@@ -279,7 +280,7 @@ void Entradas::addProdSemCodBarras(QString idProd, QString codBarras){
     qlonglong id = idProd.toLongLong();
 
     ProdutoNotaDTO prod = prodNotaServ.getProdutoNota(id);
-    QString xml_path = prodNotaServ.getXmlPathPorId(id);
+    QString xml_path = AppPath_service::resolverXmlPath(prodNotaServ.getXmlPathPorId(id));
 
     NfXmlUtil *nfutil = new NfXmlUtil(this);
     CustoItem custoxml = nfutil->calcularCustoItemSN(xml_path, prod.nitem);
@@ -343,7 +344,7 @@ void Entradas::addProdComCodBarras(QString idProd, QString codBarras){
     }
 
     NfXmlUtil *nfutil = new NfXmlUtil(this);
-    CustoItem custoxml = nfutil->calcularCustoItemSN(produtoNota["xml_path"].toString(), produtoNota["nitem"].toInt());
+    CustoItem custoxml = nfutil->calcularCustoItemSN(AppPath_service::resolverXmlPath(produtoNota["xml_path"].toString()), produtoNota["nitem"].toInt());
 
     produtoNota["preco"] = custoxml.custoUnitario;
 

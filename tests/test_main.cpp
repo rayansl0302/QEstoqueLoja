@@ -14,6 +14,7 @@
 #include "services/test_produtovenda_service.h"
 #include "services/test_fiscalemitter_service.h"
 #include "services/test_eventofiscal_service.h"
+#include "services/test_entradanfe_service.h"
 #include <QSqlDatabase>
 #include <QDebug>
 #include "nota/acbrmanager.h"
@@ -43,6 +44,7 @@ int main(int argc, char *argv[])
     status |= QTest::qExec(new TestProdutoVendaService, argc, argv);
     status |= QTest::qExec(new TestFiscalEmitterService, argc, argv);
     status |= QTest::qExec(new test_eventofiscal_service, argc, argv);
+    status |= QTest::qExec(new TestEntradaNfeService, argc, argv);
 
 #ifdef TEST_POSTGRES
     TestDbFactory::removerBDAtual();

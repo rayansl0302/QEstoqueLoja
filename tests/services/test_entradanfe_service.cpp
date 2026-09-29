@@ -1,0 +1,227 @@
+#include <QtTest>
+#include <QTemporaryDir>
+#include <QSqlQuery>
+#include "test_entradanfe_service.h"
+#include "services/entradanfe_service.h"
+#include "services/notafiscal_service.h"
+#include "util/chaveacessoutil.h"
+#include "infra/databaseconnection_service.h"
+
+namespace {
+
+const QString kCnpjEmpresa = "11111111000191";
+const QString kCnpjFornec  = "11222333000181";
+
+QString gerarChave(int nnf, int modelo = 55, const QString &cnpj = kCnpjFornec)
+{
+    QString base = QString("292602") + cnpj + QString::number(modelo) + "001"
+                   + QString("%1").arg(nnf, 9, 10, QChar('0')) + "1" + "12345678";
+    return base + QString::number(ChaveAcessoUtil::calcularDigitoVerificador(base));
+}
+
+QByteArray gerarNfeProc(const QString &chave, const QString &cnpjEmit = kCnpjFornec,
+                        const QString &cnpjDest = kCnpjEmpresa, const QString &cStat = "100",
+                        bool comProtocolo = true)
+{
+    const QString protocolo = comProtocolo
+        ? QString("<protNFe versao=\"4.00\"><infProt><tpAmb>1</tpAmb><chNFe>%1</chNFe>"
+                  "<dhRecbto>2026-02-03T14:38:37-03:00</dhRecbto><nProt>129260000000001</nProt>"
+                  "<cStat>%2</cStat><xMotivo>Autorizado o uso da NF-e</xMotivo></infProt></protNFe>")
+              .arg(chave, cStat)
+        : QString();
+
+    QString xml =
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+        "<nfeProc versao=\"4.00\"><NFe><infNFe Id=\"NFe" + chave + "\" versao=\"4.00\">"
+        "<ide><cUF>29</cUF><mod>" + chave.mid(20, 2) + "</mod><serie>1</serie><nNF>"
+        + QString::number(chave.mid(25, 9).toInt()) + "</nNF>"
+        "<dhEmi>2026-02-03T14:38:10-03:00</dhEmi><tpNF>1</tpNF><tpAmb>1</tpAmb></ide>"
+        "<emit><CNPJ>" + cnpjEmit + "</CNPJ><xNome>FORNECEDOR TESTE LTDA</xNome>"
+        "<enderEmit><xLgr>RUA A</xLgr><nro>10</nro><xBairro>CENTRO</xBairro><cMun>2927408</cMun>"
+        "<xMun>SALVADOR</xMun><UF>BA</UF><CEP>40000000</CEP></enderEmit><IE>123456789</IE></emit>"
+        "<dest><CNPJ>" + cnpjDest + "</CNPJ><xNome>MINHA LOJA</xNome></dest>"
+        // item 1: PIS com alíquota (grupo que antes derrubava a leitura dos itens)
+        "<det nItem=\"1\"><prod><cProd>001</cProd><cEAN>7891000000011</cEAN><xProd>CAFE 500G</xProd>"
+        "<NCM>09012100</NCM><CFOP>5102</CFOP><uCom>UN</uCom><qCom>10.0000</qCom>"
+        "<vUnCom>10.0000000000</vUnCom><vProd>100.00</vProd></prod>"
+        "<imposto><ICMS><ICMSSN102><orig>0</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS>"
+        "<PIS><PISAliq><CST>01</CST><vBC>10.00</vBC><pPIS>1.65</pPIS><vPIS>0.17</vPIS></PISAliq></PIS></imposto></det>"
+        // item 2: PIS não tributado
+        "<det nItem=\"2\"><prod><cProd>002</cProd><cEAN>SEM GTIN</cEAN><xProd>ACUCAR 1KG</xProd>"
+        "<NCM>17019900</NCM><CFOP>5102</CFOP><uCom>UN</uCom><qCom>5.0000</qCom>"
+        "<vUnCom>4.0000000000</vUnCom><vProd>20.00</vProd></prod>"
+        "<imposto><ICMS><ICMSSN102><orig>0</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS>"
+        "<PIS><PISNT><CST>04</CST></PISNT></PIS></imposto></det>"
+        "<total><ICMSTot><vProd>120.00</vProd><vNF>120.00</vNF></ICMSTot></total>"
+        "</infNFe></NFe>" + protocolo + "</nfeProc>";
+    return xml.toUtf8();
+}
+
+qlonglong contar(const QString &sql)
+{
+    DatabaseConnection_service::open();
+    QSqlQuery q(DatabaseConnection_service::db());
+    q.exec(sql);
+    return q.next() ? q.value(0).toLongLong() : -1;
+}
+
+EntradaNfe_service *criar(const QTemporaryDir &dir)
+{
+    auto *svc = new EntradaNfe_service;
+    svc->setPastaBase(dir.path());
+    svc->setCnpjEmpresa(kCnpjEmpresa);
+    return svc;
+}
+
+} // namespace
+
+void TestEntradaNfeService::cleanup()
+{
+    DatabaseConnection_service::open();
+    QSqlQuery q(DatabaseConnection_service::db());
+    q.exec("DELETE FROM produtos_nota");
+    q.exec("DELETE FROM notas_fiscais");
+    q.exec("DELETE FROM clientes WHERE cpf = '" + kCnpjFornec + "'");
+}
+
+void TestEntradaNfeService::importa_xml_ok()
+{
+    QTemporaryDir dir;
+    QScopedPointer<EntradaNfe_service> svc(criar(dir));
+    const QString chave = gerarChave(1);
+
+    auto r = svc->importarConteudo(gerarNfeProc(chave));
+    QVERIFY2(r.ok, qPrintable(r.msg));
+    QVERIFY(r.idNota > 0);
+
+    QCOMPARE(contar(QString("SELECT COUNT(*) FROM notas_fiscais WHERE chnfe = '%1' "
+                            "AND finalidade = 'ENTRADA EXTERNA' AND cstat = '100'").arg(chave)), 1LL);
+    QCOMPARE(contar(QString("SELECT COUNT(*) FROM produtos_nota WHERE id_nf = %1").arg(r.idNota)), 2LL);
+    QCOMPARE(contar(QString("SELECT COUNT(*) FROM clientes WHERE cpf = '%1'").arg(kCnpjFornec)), 1LL);
+
+    // arquivo gravado e caminho relativo no banco
+    const QString relativo = QString("xmlNf/entradas/%1-nfe.xml").arg(chave);
+    QVERIFY(QFile::exists(dir.path() + "/" + relativo));
+    NotaFiscal_service nfServ;
+    QCOMPARE(nfServ.getNotaById(r.idNota).xmlPath, relativo);
+}
+
+void TestEntradaNfeService::importa_nota_duplicada_nao_duplica()
+{
+    QTemporaryDir dir;
+    QScopedPointer<EntradaNfe_service> svc(criar(dir));
+    const QString chave = gerarChave(2);
+
+    auto r1 = svc->importarConteudo(gerarNfeProc(chave));
+    QVERIFY2(r1.ok, qPrintable(r1.msg));
+    auto r2 = svc->importarConteudo(gerarNfeProc(chave));
+
+    QVERIFY(!r2.ok);
+    QCOMPARE(r2.erro, EntradaNfeErro::Duplicada);
+    QCOMPARE(r2.idNota, r1.idNota);
+    QCOMPARE(contar(QString("SELECT COUNT(*) FROM notas_fiscais WHERE chnfe = '%1'").arg(chave)), 1LL);
+    QCOMPARE(contar(QString("SELECT COUNT(*) FROM produtos_nota WHERE id_nf = %1").arg(r1.idNota)), 2LL);
+}
+
+void TestEntradaNfeService::destinatario_diferente_bloqueia_e_permite_com_confirmacao()
+{
+    QTemporaryDir dir;
+    QScopedPointer<EntradaNfe_service> svc(criar(dir));
+    const QString chave = gerarChave(3);
+    const QByteArray xml = gerarNfeProc(chave, kCnpjFornec, "99888777000166");
+
+    auto r1 = svc->importarConteudo(xml);
+    QVERIFY(!r1.ok);
+    QCOMPARE(r1.erro, EntradaNfeErro::DestinatarioDiferente);
+    QCOMPARE(contar(QString("SELECT COUNT(*) FROM notas_fiscais WHERE chnfe = '%1'").arg(chave)), 0LL);
+
+    auto r2 = svc->importarConteudo(xml, /*ignorarDestinatario=*/true);
+    QVERIFY2(r2.ok, qPrintable(r2.msg));
+}
+
+void TestEntradaNfeService::nota_cancelada_e_recusada()
+{
+    QTemporaryDir dir;
+    QScopedPointer<EntradaNfe_service> svc(criar(dir));
+    auto r = svc->importarConteudo(gerarNfeProc(gerarChave(4), kCnpjFornec, kCnpjEmpresa, "101"));
+    QVERIFY(!r.ok);
+    QCOMPARE(r.erro, EntradaNfeErro::NaoAutorizada);
+    QVERIFY(r.msg.contains("101"));
+}
+
+void TestEntradaNfeService::xml_sem_protocolo_e_recusado()
+{
+    QTemporaryDir dir;
+    QScopedPointer<EntradaNfe_service> svc(criar(dir));
+    auto r = svc->importarConteudo(gerarNfeProc(gerarChave(5), kCnpjFornec, kCnpjEmpresa, "100", false));
+    QVERIFY(!r.ok);
+    QCOMPARE(r.erro, EntradaNfeErro::NaoAutorizada);
+    QVERIFY(r.msg.contains("protocolo"));
+}
+
+void TestEntradaNfeService::nfce_e_recusada()
+{
+    QTemporaryDir dir;
+    QScopedPointer<EntradaNfe_service> svc(criar(dir));
+    auto r = svc->importarConteudo(gerarNfeProc(gerarChave(6, 65)));
+    QVERIFY(!r.ok);
+    QCOMPARE(r.erro, EntradaNfeErro::NaoEhNfe);
+    QVERIFY(r.msg.contains("NFC-e"));
+}
+
+void TestEntradaNfeService::xml_invalido_e_recusado()
+{
+    QTemporaryDir dir;
+    QScopedPointer<EntradaNfe_service> svc(criar(dir));
+    QCOMPARE(svc->importarConteudo("isto nao e xml").erro, EntradaNfeErro::ArquivoInvalido);
+    QCOMPARE(svc->importarConteudo("<resNFe><chNFe>1</chNFe></resNFe>").erro, EntradaNfeErro::NaoEhNfe);
+    QCOMPARE(svc->importarXml(dir.path() + "/nao_existe.xml").erro, EntradaNfeErro::ArquivoInvalido);
+}
+
+void TestEntradaNfeService::nota_propria_e_recusada()
+{
+    QTemporaryDir dir;
+    QScopedPointer<EntradaNfe_service> svc(criar(dir));
+    const QString chave = gerarChave(7, 55, kCnpjEmpresa);
+    auto r = svc->importarConteudo(gerarNfeProc(chave, kCnpjEmpresa, kCnpjEmpresa));
+    QVERIFY(!r.ok);
+    QCOMPARE(r.erro, EntradaNfeErro::NotaPropria);
+}
+
+void TestEntradaNfeService::completa_nota_que_so_tinha_resumo()
+{
+    QTemporaryDir dir;
+    QScopedPointer<EntradaNfe_service> svc(criar(dir));
+    const QString chave = gerarChave(8);
+
+    // resumo, como o download automático (resNFe) grava
+    NotaFiscalDTO resumo;
+    resumo.chNfe = chave;
+    resumo.cnpjEmit = kCnpjFornec;
+    resumo.finalidade = "resNFe";
+    resumo.cstat = "0";
+    resumo.tpAmb = 1;
+    resumo.saida = false;
+    resumo.valorTotal = 120;
+    resumo.dhEmi = "03/02/2026 14:38:10";
+    NotaFiscal_service nfServ;
+    QVERIFY(nfServ.salvarResNfe(resumo).ok);
+    const qlonglong idResumo = nfServ.getIdFromChave(chave);
+    QVERIFY(idResumo > 0);
+
+    auto r = svc->importarConteudo(gerarNfeProc(chave));
+    QVERIFY2(r.ok, qPrintable(r.msg));
+    QCOMPARE(r.idNota, idResumo);
+    QCOMPARE(contar(QString("SELECT COUNT(*) FROM notas_fiscais WHERE chnfe = '%1'").arg(chave)), 1LL);
+    QCOMPARE(contar(QString("SELECT COUNT(*) FROM produtos_nota WHERE id_nf = %1").arg(idResumo)), 2LL);
+    QCOMPARE(nfServ.getNotaById(idResumo).finalidade, QString("ENTRADA EXTERNA"));
+}
+
+void TestEntradaNfeService::importa_nota_com_pis_aliquota_sem_travar()
+{
+    QTemporaryDir dir;
+    QScopedPointer<EntradaNfe_service> svc(criar(dir));
+    auto r = svc->importarConteudo(gerarNfeProc(gerarChave(9)));
+    QVERIFY2(r.ok, qPrintable(r.msg));
+    QCOMPARE(contar(QString("SELECT COUNT(*) FROM produtos_nota WHERE id_nf = %1 AND pis = '01'").arg(r.idNota)), 1LL);
+}
