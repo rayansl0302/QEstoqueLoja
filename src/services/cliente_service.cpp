@@ -22,8 +22,12 @@ Cliente_service::Resultado Cliente_service::inserirClienteEmitente(ClienteDTO em
         emissor.indIeDest = 0;
     }
 
-    if(!cliRepo.inserir(emissor)){
-        return {false, ClienteErro::InsercaoInvalida, "Não conseguiu inserir cliente emissor."};
+    QString detalhe;
+    if(!cliRepo.inserir(emissor, &detalhe)){
+        const QString msg = detalhe.isEmpty()
+            ? QString("Não conseguiu inserir cliente emissor.")
+            : QString("Não conseguiu inserir cliente emissor: %1").arg(detalhe);
+        return {false, ClienteErro::InsercaoInvalida, msg};
     }else{
         return {true, ClienteErro::Nenhum, ""};
     }

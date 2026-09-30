@@ -12,7 +12,7 @@ class Cliente_repository : public QObject
 public:
     explicit Cliente_repository(QObject *parent = nullptr);
     qlonglong contarQuantosRegistrosPorCPFCNPJ(const QString &cpfcnpj);
-    bool inserir(ClienteDTO cliente);
+    bool inserir(ClienteDTO cliente, QString *erro = nullptr);
     qlonglong getIdFromCPFCNPJ(const QString &cpfcnpj);
     void listarClientes(QSqlQueryModel *model);
     bool deletarCliente(qlonglong id);

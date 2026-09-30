@@ -3,6 +3,7 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include "../util/datautil.h"
+#include <QDateTime>
 
 Cliente_repository::Cliente_repository(QObject *parent)
     : QObject{parent}
@@ -32,7 +33,7 @@ qlonglong Cliente_repository::contarQuantosRegistrosPorCPFCNPJ(const QString &cp
     return total;
 }
 
-bool Cliente_repository::inserir(ClienteDTO cliente){
+bool Cliente_repository::inserir(ClienteDTO cliente, QString *erro){
     bool ehPf = false;
     int indiedest = 1;
     if(cliente.cpf.length() == 14){
@@ -46,9 +47,11 @@ bool Cliente_repository::inserir(ClienteDTO cliente){
         indiedest = 0;
     }
 
-    QString dataFormatada = DataUtil::getDataAgoraUS();
+    const QDateTime agora = QDateTime::currentDateTime();
     QSqlQuery query(db);
     if(!DatabaseConnection_service::open()){
+        if (erro)
+            *erro = "Não foi possível abrir o banco de dados.";
         return false;
     }
     query.prepare("INSERT INTO clientes (nome, email, telefone, endereco, cpf, "
@@ -66,22 +69,24 @@ bool Cliente_repository::inserir(ClienteDTO cliente){
     }else{
         query.bindValue(":data_nascimento", cliente.dataNasc);
     }
-    query.bindValue(":data_cadastro", dataFormatada);
+    query.bindValue(":data_cadastro", agora);
     query.bindValue(":eh_pf", cliente.ehPf);
-    query.bindValue(":numero_end", cliente.endereco);
+    query.bindValue(":numero_end", cliente.numeroEnd > 0 ? QString::number(cliente.numeroEnd) : QString());
     query.bindValue(":bairro", cliente.bairro);
     query.bindValue(":xMun", cliente.xMun);
     query.bindValue(":cMun", cliente.cMun);
     query.bindValue(":uf", cliente.uf);
     query.bindValue(":cep", cliente.cep);
-    query.bindValue(":indIEDest", cliente.indIeDest);
+    query.bindValue(":indIEDest", static_cast<double>(cliente.indIeDest));
     query.bindValue(":ie", cliente.ie);
-    query.bindValue(":adicionadoem", dataFormatada);
-    query.bindValue(":atualizadoem", dataFormatada);
+    query.bindValue(":adicionadoem", agora);
+    query.bindValue(":atualizadoem", agora);
 
 
     if(!query.exec()){
-        qDebug() << "Query insert Cliente nao funcionou!";
+        qDebug() << "Query insert Cliente nao funcionou!" << query.lastError().text();
+        if (erro)
+            *erro = query.lastError().text();
         return false;
     }else{
         qDebug() << "cliente adicionado com sucesso!";
