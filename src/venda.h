@@ -65,6 +65,7 @@ protected:
     void selecionarFormaPagamento(int index);
     bool eventFilter(QObject *obj, QEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
+    void igualarCartoesPagamento();
 
 private slots:
     void on_Btn_SelecionarProduto_clicked();

@@ -15,6 +15,7 @@ class DanfeUtil : public QObject
 public:
     explicit DanfeUtil(QObject *parent = nullptr);
     bool abrirDanfe(qlonglong idVenda);
+    bool imprimirNotaCliente(qlonglong idVenda, QString *erro = nullptr);
     void imprimirDanfe(const ACBrNFe *nf);
     void setCaminhoLogo(QString logo);
     bool abrirDanfePorXml(const QString& xmlPath);

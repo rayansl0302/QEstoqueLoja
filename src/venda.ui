@@ -801,271 +801,287 @@ QLabel { background-color: transparent; border: none; }
       </layout>
      </widget>
      <widget class="QWidget" name="page_Pagamento">
-      <layout class="QHBoxLayout" name="hl_p2">
+      <layout class="QVBoxLayout" name="hl_p2">
        <property name="spacing">
-        <number>20</number>
+        <number>24</number>
        </property>
        <property name="leftMargin">
-        <number>16</number>
+        <number>20</number>
        </property>
        <property name="topMargin">
-        <number>12</number>
-       </property>
-       <property name="rightMargin">
         <number>16</number>
        </property>
+       <property name="rightMargin">
+        <number>20</number>
+       </property>
        <property name="bottomMargin">
-        <number>12</number>
+        <number>16</number>
        </property>
        <item>
-        <layout class="QVBoxLayout" name="vl_p2_form">
+        <layout class="QHBoxLayout" name="hl_pagar_resumo">
          <property name="spacing">
-          <number>8</number>
+          <number>16</number>
          </property>
-         <item>
-          <widget class="QLabel" name="lbl_pag_titulo">
-           <property name="styleSheet">
-            <string notr="true">font: 700 14pt &quot;Ubuntu&quot;; color: rgb(40,60,80);</string>
-           </property>
-           <property name="text">
-            <string>Como vai pagar? (Alt+1 Dinheiro · Alt+2 Débito · Alt+3 Crédito · Alt+4 Pix)</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QComboBox" name="CBox_FormaPagamento">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>36</height>
-            </size>
-           </property>
-           <item>
-            <property name="text">
-             <string>Dinheiro</string>
-            </property>
-            <property name="icon">
-             <iconset resource="../Imagens/recursosImg.qrc">
-              <normaloff>:/QEstoqueLOja/taxes-finances.svg</normaloff>:/QEstoqueLOja/taxes-finances.svg</iconset>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>Não Sei</string>
-            </property>
-            <property name="icon">
-             <iconset resource="../Imagens/recursosImg.qrc">
-              <normaloff>:/QEstoqueLOja/question.svg</normaloff>:/QEstoqueLOja/question.svg</iconset>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>Crédito</string>
-            </property>
-            <property name="icon">
-             <iconset resource="../Imagens/recursosImg.qrc">
-              <normaloff>:/QEstoqueLOja/view-financial-account-credit-card.svg</normaloff>:/QEstoqueLOja/view-financial-account-credit-card.svg</iconset>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>Débito</string>
-            </property>
-            <property name="icon">
-             <iconset resource="../Imagens/recursosImg.qrc">
-              <normaloff>:/QEstoqueLOja/view-financial-transfer-reconciled.svg</normaloff>:/QEstoqueLOja/view-financial-transfer-reconciled.svg</iconset>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>Pix</string>
-            </property>
-            <property name="icon">
-             <iconset resource="../Imagens/recursosImg.qrc">
-              <normaloff>:/QEstoqueLOja/view-financial-account-liability.svg</normaloff>:/QEstoqueLOja/view-financial-account-liability.svg</iconset>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>Prazo</string>
-            </property>
-            <property name="icon">
-             <iconset resource="../Imagens/recursosImg.qrc">
-              <normaloff>:/QEstoqueLOja/appointment-soon-symbolic.svg</normaloff>:/QEstoqueLOja/appointment-soon-symbolic.svg</iconset>
-            </property>
-           </item>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="lbl_desconto">
-           <property name="text">
-            <string>Desconto (R$):</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="hl_desconto">
-           <property name="spacing">
-            <number>6</number>
-           </property>
-           <item>
-            <widget class="CustomLineEdit" name="Ledit_Desconto">
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>32</height>
-              </size>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="CheckPorcentagem">
-             <property name="text">
-              <string>Porcentagem?</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item>
-          <widget class="QLabel" name="lbl_taxa">
-           <property name="text">
-            <string>Taxa (%):</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="CustomLineEdit" name="Ledit_Taxa">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>32</height>
-            </size>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="lbl_valor_final">
-           <property name="text">
-            <string>Valor Final (R$):</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="Lbl_TotalTaxa">
-           <property name="styleSheet">
-            <string notr="true">font: 700 36pt &quot;Ubuntu&quot;; color: rgb(33,105,149);</string>
-           </property>
-           <property name="text">
-            <string>0</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="label_2">
-           <property name="text">
-            <string>Quantia Recebida (R$):</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="CustomLineEdit" name="Ledit_Recebido">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>32</height>
-            </size>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="label_3">
-           <property name="text">
-            <string>Troco (R$):</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="Lbl_Troco">
-           <property name="styleSheet">
-            <string notr="true">font: 700 40pt &quot;Ubuntu&quot;; color: rgb(30,140,70);</string>
-           </property>
-           <property name="text">
-            <string>0</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="CheckImprimirCupomPag">
-           <property name="toolTip">
-            <string>Imprime o cupom na impressora térmica ao confirmar a venda</string>
-           </property>
-           <property name="text">
-            <string>Imprimir cupom na impressora térmica</string>
-           </property>
-           <property name="icon">
-            <iconset resource="../Imagens/recursosImg.qrc">
-             <normaloff>:/QEstoqueLOja/document-print.svg</normaloff>:/QEstoqueLOja/document-print.svg</iconset>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <spacer>
-           <property name="orientation">
-            <enum>Qt::Orientation::Vertical</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>20</width>
-             <height>40</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-        </layout>
-       </item>
        <item>
-        <layout class="QVBoxLayout" name="vl_p2_right">
-         <property name="spacing">
-          <number>12</number>
+        <widget class="QFrame" name="frame_Campos">
+         <property name="styleSheet">
+          <string notr="true">QFrame#frame_Campos { background-color: white; border: 1px solid #e2e8f0; border-radius: 12px; }
+QLabel { background-color: transparent; border: none; }</string>
          </property>
-         <item>
+         <layout class="QVBoxLayout" name="vl_p2_form">
+          <property name="spacing"><number>8</number></property>
+          <property name="leftMargin"><number>16</number></property>
+          <property name="topMargin"><number>12</number></property>
+          <property name="rightMargin"><number>16</number></property>
+          <property name="bottomMargin"><number>12</number></property>
+          <item>
+           <widget class="QLabel" name="lbl_pag_titulo">
+            <property name="styleSheet">
+             <string notr="true">font: 700 16pt &quot;Ubuntu&quot;; color: rgb(40,60,80);</string>
+            </property>
+            <property name="text">
+             <string>Como vai pagar? (Alt+1 Dinheiro · Alt+2 Débito · Alt+3 Crédito · Alt+4 Pix)</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="CBox_FormaPagamento">
+            <property name="minimumSize">
+             <size><width>0</width><height>52</height></size>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">QComboBox { font-size: 18px; padding: 8px 12px; }
+QComboBox QAbstractItemView { font-size: 18px; }</string>
+            </property>
+            <item>
+             <property name="text"><string>Dinheiro</string></property>
+             <property name="icon">
+              <iconset resource="../Imagens/recursosImg.qrc">
+               <normaloff>:/QEstoqueLOja/taxes-finances.svg</normaloff>:/QEstoqueLOja/taxes-finances.svg</iconset>
+             </property>
+            </item>
+            <item>
+             <property name="text"><string>Não Sei</string></property>
+             <property name="icon">
+              <iconset resource="../Imagens/recursosImg.qrc">
+               <normaloff>:/QEstoqueLOja/question.svg</normaloff>:/QEstoqueLOja/question.svg</iconset>
+             </property>
+            </item>
+            <item>
+             <property name="text"><string>Crédito</string></property>
+             <property name="icon">
+              <iconset resource="../Imagens/recursosImg.qrc">
+               <normaloff>:/QEstoqueLOja/view-financial-account-credit-card.svg</normaloff>:/QEstoqueLOja/view-financial-account-credit-card.svg</iconset>
+             </property>
+            </item>
+            <item>
+             <property name="text"><string>Débito</string></property>
+             <property name="icon">
+              <iconset resource="../Imagens/recursosImg.qrc">
+               <normaloff>:/QEstoqueLOja/view-financial-transfer-reconciled.svg</normaloff>:/QEstoqueLOja/view-financial-transfer-reconciled.svg</iconset>
+             </property>
+            </item>
+            <item>
+             <property name="text"><string>Pix</string></property>
+             <property name="icon">
+              <iconset resource="../Imagens/recursosImg.qrc">
+               <normaloff>:/QEstoqueLOja/view-financial-account-liability.svg</normaloff>:/QEstoqueLOja/view-financial-account-liability.svg</iconset>
+             </property>
+            </item>
+            <item>
+             <property name="text"><string>Prazo</string></property>
+             <property name="icon">
+              <iconset resource="../Imagens/recursosImg.qrc">
+               <normaloff>:/QEstoqueLOja/appointment-soon-symbolic.svg</normaloff>:/QEstoqueLOja/appointment-soon-symbolic.svg</iconset>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QWidget" name="frame_Recebido">
+            <layout class="QVBoxLayout" name="vl_recebido">
+             <property name="spacing"><number>6</number></property>
+             <property name="leftMargin"><number>0</number></property>
+             <property name="topMargin"><number>0</number></property>
+             <property name="rightMargin"><number>0</number></property>
+             <property name="bottomMargin"><number>0</number></property>
+             <item>
+              <widget class="QLabel" name="label_2">
+               <property name="styleSheet">
+                <string notr="true">font: 700 15pt &quot;Ubuntu&quot;; color: rgb(40,60,80);</string>
+               </property>
+               <property name="text"><string>Quantia recebida (R$)</string></property>
+              </widget>
+             </item>
+             <item>
+              <widget class="CustomLineEdit" name="Ledit_Recebido">
+               <property name="minimumSize">
+                <size><width>0</width><height>52</height></size>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">font-size: 22px; padding: 8px 12px;</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="hl_desconto">
+            <property name="spacing"><number>16</number></property>
+            <item>
+             <layout class="QVBoxLayout" name="vl_desconto">
+              <property name="spacing"><number>6</number></property>
+              <item>
+               <widget class="QLabel" name="lbl_desconto">
+                <property name="styleSheet">
+                 <string notr="true">font: 700 15pt &quot;Ubuntu&quot;; color: rgb(40,60,80);</string>
+                </property>
+                <property name="text"><string>Desconto (R$)</string></property>
+               </widget>
+              </item>
+              <item>
+               <widget class="CustomLineEdit" name="Ledit_Desconto">
+                <property name="minimumSize">
+                 <size><width>220</width><height>46</height></size>
+                </property>
+                <property name="maximumSize">
+                 <size><width>280</width><height>46</height></size>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">font-size: 18px; padding: 6px 10px;</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item alignment="Qt::AlignmentFlag::AlignBottom">
+             <widget class="QCheckBox" name="CheckPorcentagem">
+              <property name="styleSheet">
+               <string notr="true">font: 700 15pt &quot;Ubuntu&quot;; color: rgb(40,60,80);</string>
+              </property>
+              <property name="text"><string>Porcentagem?</string></property>
+             </widget>
+            </item>
+            <item>
+             <spacer>
+              <property name="orientation">
+               <enum>Qt::Orientation::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size><width>40</width><height>20</height></size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="QWidget" name="frame_Taxa">
+            <property name="maximumSize">
+             <size><width>280</width><height>16777215</height></size>
+            </property>
+            <layout class="QVBoxLayout" name="vl_taxa">
+             <property name="spacing"><number>6</number></property>
+             <property name="leftMargin"><number>0</number></property>
+             <property name="topMargin"><number>0</number></property>
+             <property name="rightMargin"><number>0</number></property>
+             <property name="bottomMargin"><number>0</number></property>
+             <item>
+              <widget class="QLabel" name="lbl_taxa">
+               <property name="styleSheet">
+                <string notr="true">font: 700 15pt &quot;Ubuntu&quot;; color: rgb(40,60,80);</string>
+               </property>
+               <property name="text"><string>Taxa (%)</string></property>
+              </widget>
+             </item>
+             <item>
+              <widget class="CustomLineEdit" name="Ledit_Taxa">
+               <property name="minimumSize">
+                <size><width>0</width><height>46</height></size>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">font-size: 18px; padding: 6px 10px;</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="CheckImprimirCupomPag">
+            <property name="toolTip">
+             <string>Imprime o cupom na impressora térmica ao confirmar a venda</string>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">font: 700 15pt &quot;Ubuntu&quot;; color: rgb(40,60,80);</string>
+            </property>
+            <property name="text">
+             <string>Imprimir cupom na impressora térmica</string>
+            </property>
+            <property name="checked"><bool>true</bool></property>
+            <property name="icon">
+             <iconset resource="../Imagens/recursosImg.qrc">
+              <normaloff>:/QEstoqueLOja/document-print.svg</normaloff>:/QEstoqueLOja/document-print.svg</iconset>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+         <item >
           <widget class="QFrame" name="frame_Resumo">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>320</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>360</width>
+             <height>16777215</height>
+            </size>
+           </property>
            <property name="styleSheet">
-            <string notr="true">
-QFrame { background-color: rgb(170,170,170); border-radius: 8px; font: 700 9pt &quot;Segoe UI&quot;; font-size: 14px; }
-QLabel { background-color: transparent; border: none; }
-QLineEdit { background-color: white; border: 1px solid rgb(155,165,185); border-radius: 4px; padding: 2px 6px; }
-            </string>
+            <string notr="true">QFrame#frame_Resumo { background-color: white; border: 1px solid #e2e8f0; border-radius: 12px; }
+QLabel { background-color: transparent; border: none; font: 700 14pt &quot;Ubuntu&quot;; color: rgb(40,60,80); }</string>
            </property>
            <property name="frameShape">
             <enum>QFrame::Shape::StyledPanel</enum>
            </property>
-           <property name="frameShadow">
-            <enum>QFrame::Shadow::Raised</enum>
-           </property>
-           <layout class="QVBoxLayout">
+           <layout class="QVBoxLayout" name="vl_p2_right">
+            <property name="spacing"><number>8</number></property>
+            <property name="leftMargin"><number>16</number></property>
+            <property name="topMargin"><number>14</number></property>
+            <property name="rightMargin"><number>16</number></property>
+            <property name="bottomMargin"><number>14</number></property>
             <item>
              <widget class="QLabel" name="lbl_resumo_titulo">
-              <property name="text">
-               <string>Resumo</string>
+              <property name="styleSheet">
+               <string notr="true">font: 700 13pt &quot;Ubuntu&quot;; color: rgb(100,116,139);</string>
               </property>
+              <property name="text"><string>Resumo</string></property>
              </widget>
             </item>
             <item>
              <layout class="QHBoxLayout">
               <item>
                <widget class="QLabel" name="lbl_res_total">
-                <property name="text">
-                 <string>Total (R$):</string>
-                </property>
+                <property name="text"><string>Total</string></property>
                </widget>
               </item>
               <item>
                <widget class="QLabel" name="Lbl_ResumoTotal">
-                <property name="text">
-                 <string>0</string>
+                <property name="alignment">
+                 <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignVCenter</set>
                 </property>
+                <property name="text"><string>0</string></property>
                </widget>
               </item>
              </layout>
@@ -1074,30 +1090,15 @@ QLineEdit { background-color: white; border: 1px solid rgb(155,165,185); border-
              <layout class="QHBoxLayout">
               <item>
                <widget class="QLabel" name="lbl_res_cliente">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="text">
-                 <string>Cliente:</string>
-                </property>
+                <property name="text"><string>Cliente</string></property>
                </widget>
               </item>
               <item>
                <widget class="QLabel" name="Lbl_ResumoCliente">
-                <property name="font">
-                 <font>
-                  <family>Segoe UI</family>
-                  <pointsize>-1</pointsize>
-                  <italic>false</italic>
-                  <bold>true</bold>
-                 </font>
+                <property name="alignment">
+                 <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignVCenter</set>
                 </property>
-                <property name="text">
-                 <string/>
-                </property>
+                <property name="text"><string/></property>
                </widget>
               </item>
              </layout>
@@ -1106,22 +1107,15 @@ QLineEdit { background-color: white; border: 1px solid rgb(155,165,185); border-
              <layout class="QHBoxLayout">
               <item>
                <widget class="QLabel" name="lbl_res_data">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="text">
-                 <string>Data:</string>
-                </property>
+                <property name="text"><string>Data</string></property>
                </widget>
               </item>
               <item>
                <widget class="QLabel" name="Lbl_ResumoData">
-                <property name="text">
-                 <string/>
+                <property name="alignment">
+                 <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignVCenter</set>
                 </property>
+                <property name="text"><string/></property>
                </widget>
               </item>
              </layout>
@@ -1129,18 +1123,144 @@ QLineEdit { background-color: white; border: 1px solid rgb(155,165,185); border-
            </layout>
           </widget>
          </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="hl_valores">
+         <property name="spacing">
+          <number>16</number>
+         </property>
          <item>
-          <spacer>
-           <property name="orientation">
-            <enum>Qt::Orientation::Vertical</enum>
+          <widget class="QFrame" name="frame_Pagar">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+             <horstretch>1</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
            </property>
-           <property name="sizeHint" stdset="0">
+           <property name="minimumSize">
             <size>
-             <width>20</width>
-             <height>40</height>
+             <width>220</width>
+             <height>92</height>
             </size>
            </property>
-          </spacer>
+           <property name="styleSheet">
+            <string notr="true">QFrame#frame_Pagar { background-color: white; border: 1px solid #e2e8f0; border-top: 5px solid rgb(33,105,149); border-radius: 12px; }
+QLabel { background-color: transparent; border: none; }</string>
+           </property>
+           <layout class="QVBoxLayout" name="vl_valor_final">
+            <property name="leftMargin"><number>18</number></property>
+            <property name="topMargin"><number>8</number></property>
+            <property name="rightMargin"><number>18</number></property>
+            <property name="bottomMargin"><number>8</number></property>
+            <item>
+             <spacer>
+              <property name="orientation">
+               <enum>Qt::Orientation::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size><width>20</width><height>10</height></size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="QLabel" name="lbl_valor_final">
+              <property name="styleSheet">
+               <string notr="true">font: 700 18pt &quot;Ubuntu&quot;; color: rgb(71,85,105);</string>
+              </property>
+              <property name="text">
+               <string>Valor a pagar</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="Lbl_TotalTaxa">
+              <property name="styleSheet">
+               <string notr="true">font: 700 72pt &quot;Ubuntu&quot;; color: rgb(33,105,149);</string>
+              </property>
+              <property name="text">
+               <string>0</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer>
+              <property name="orientation">
+               <enum>Qt::Orientation::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size><width>20</width><height>10</height></size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QFrame" name="frame_Troco">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+             <horstretch>1</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>220</width>
+             <height>92</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QFrame#frame_Troco { background-color: white; border: 1px solid #e2e8f0; border-top: 5px solid rgb(30,140,70); border-radius: 12px; }
+QLabel { background-color: transparent; border: none; }</string>
+           </property>
+           <layout class="QVBoxLayout" name="vl_troco">
+            <property name="leftMargin"><number>18</number></property>
+            <property name="topMargin"><number>8</number></property>
+            <property name="rightMargin"><number>18</number></property>
+            <property name="bottomMargin"><number>8</number></property>
+            <item>
+             <spacer>
+              <property name="orientation">
+               <enum>Qt::Orientation::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size><width>20</width><height>10</height></size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_3">
+              <property name="styleSheet">
+               <string notr="true">font: 700 18pt &quot;Ubuntu&quot;; color: rgb(71,85,105);</string>
+              </property>
+              <property name="text">
+               <string>Troco</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="Lbl_Troco">
+              <property name="styleSheet">
+               <string notr="true">font: 700 72pt &quot;Ubuntu&quot;; color: rgb(30,140,70);</string>
+              </property>
+              <property name="text">
+               <string>0</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer>
+              <property name="orientation">
+               <enum>Qt::Orientation::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size><width>20</width><height>10</height></size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </widget>
          </item>
         </layout>
        </item>
@@ -1349,13 +1469,13 @@ QLineEdit { background-color: white; border: 1px solid rgb(155,165,185); border-
      <property name="minimumSize">
       <size>
        <width>0</width>
-       <height>54</height>
+       <height>82</height>
       </size>
      </property>
      <property name="maximumSize">
       <size>
        <width>16777215</width>
-       <height>54</height>
+       <height>82</height>
       </size>
      </property>
      <property name="styleSheet">
@@ -1369,25 +1489,25 @@ QLineEdit { background-color: white; border: 1px solid rgb(155,165,185); border-
        <number>12</number>
       </property>
       <property name="topMargin">
-       <number>7</number>
+       <number>10</number>
       </property>
       <property name="rightMargin">
        <number>12</number>
       </property>
       <property name="bottomMargin">
-       <number>7</number>
+       <number>10</number>
       </property>
       <item>
        <widget class="QPushButton" name="Btn_CancelarVenda">
         <property name="minimumSize">
          <size>
-          <width>180</width>
-          <height>38</height>
+          <width>200</width>
+          <height>56</height>
          </size>
         </property>
         <property name="styleSheet">
          <string notr="true">
-#Btn_CancelarVenda { background-color: rgb(191,61,64); }
+#Btn_CancelarVenda { background-color: rgb(191,61,64); font-size: 16px; }
 #Btn_CancelarVenda:hover { background-color: rgb(139,44,47); }
 #Btn_CancelarVenda:pressed { background-color: rgb(255,96,99); }
          </string>
@@ -1400,7 +1520,7 @@ QLineEdit { background-color: white; border: 1px solid rgb(155,165,185); border-
       <item>
        <widget class="QCheckBox" name="Chk_NovaVenda">
         <property name="styleSheet">
-         <string notr="true">font: 700 9pt &quot;Segoe UI&quot;; color: rgb(40,60,80); background-color: transparent; border: none;</string>
+         <string notr="true">font: 700 13pt &quot;Segoe UI&quot;; color: rgb(40,60,80); background-color: transparent; border: none;</string>
         </property>
         <property name="text">
          <string>Nova venda ao finalizar</string>
@@ -1431,7 +1551,7 @@ QLineEdit { background-color: white; border: 1px solid rgb(155,165,185); border-
         <item>
          <widget class="QLabel" name="Lbl_QtdItens">
           <property name="styleSheet">
-           <string notr="true">font: 700 11pt &quot;Ubuntu&quot;; color: rgb(40,60,80); background-color: transparent; border: none; padding-right: 16px;</string>
+           <string notr="true">font: 700 15pt &quot;Ubuntu&quot;; color: rgb(40,60,80); background-color: transparent; border: none; padding-right: 16px;</string>
           </property>
           <property name="text">
            <string>0 itens</string>
@@ -1441,7 +1561,7 @@ QLineEdit { background-color: white; border: 1px solid rgb(155,165,185); border-
         <item>
          <widget class="QLabel" name="lbl_total_txt">
           <property name="styleSheet">
-           <string notr="true">font: 700 13pt &quot;Ubuntu&quot;; color: rgb(40,60,80); background-color: transparent; border: none;</string>
+           <string notr="true">font: 700 16pt &quot;Ubuntu&quot;; color: rgb(40,60,80); background-color: transparent; border: none;</string>
           </property>
           <property name="text">
            <string>Total (R$):</string>
@@ -1451,7 +1571,7 @@ QLineEdit { background-color: white; border: 1px solid rgb(155,165,185); border-
         <item>
          <widget class="QLabel" name="Lbl_Total">
           <property name="styleSheet">
-           <string notr="true">font: 700 16pt &quot;Ubuntu&quot;; color: rgb(33,105,149); background-color: transparent; border: none;</string>
+           <string notr="true">font: 700 22pt &quot;Ubuntu&quot;; color: rgb(33,105,149); background-color: transparent; border: none;</string>
           </property>
           <property name="text">
            <string>0,00</string>
@@ -1477,9 +1597,12 @@ QLineEdit { background-color: white; border: 1px solid rgb(155,165,185); border-
        <widget class="QPushButton" name="Btn_Voltar">
         <property name="minimumSize">
          <size>
-          <width>130</width>
-          <height>38</height>
+          <width>140</width>
+          <height>56</height>
          </size>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">#Btn_Voltar { font-size: 16px; }</string>
         </property>
         <property name="visible">
          <bool>false</bool>
@@ -1493,13 +1616,13 @@ QLineEdit { background-color: white; border: 1px solid rgb(155,165,185); border-
        <widget class="QPushButton" name="Btn_Aceitar">
         <property name="minimumSize">
          <size>
-          <width>210</width>
-          <height>38</height>
+          <width>230</width>
+          <height>56</height>
          </size>
         </property>
         <property name="styleSheet">
          <string notr="true">
-#Btn_Aceitar { background-color: rgb(33,105,149); }
+#Btn_Aceitar { background-color: rgb(33,105,149); font-size: 16px; }
 #Btn_Aceitar:hover { background-color: rgb(3,75,119); }
 #Btn_Aceitar:pressed { background-color: rgb(153,193,241); }
          </string>

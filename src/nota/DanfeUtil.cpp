@@ -3,6 +3,7 @@
 #include "../configuracao.h"
 #include <QStandardPaths>
 #include <QFileInfo>
+#include <exception>
 
 DanfeUtil::DanfeUtil(QObject *parent)
     : QObject{parent}
@@ -25,6 +26,52 @@ DanfeUtil::DanfeUtil(QObject *parent)
                               "/imagens/" + QFileInfo(configDTO.logoPathEmpresa).fileName();
     caminhoLogo = caminhoCompletoLogo;
 }
+bool DanfeUtil::imprimirNotaCliente(qlonglong idVenda, QString *erro)
+{
+    const QString impressora = configDTO.impressoraNomeDispositivo.trimmed();
+    if (impressora.isEmpty()) {
+        if (erro)
+            *erro = "Nenhuma impressora térmica selecionada. Escolha em Configurações.";
+        return false;
+    }
+
+    const QString xmlPathRelativo = notaServ.getXmlPathFromIdVenda(idVenda);
+    if (xmlPathRelativo.isEmpty()) {
+        if (erro)
+            *erro = "Não foi possível localizar o XML da nota dessa venda.";
+        return false;
+    }
+
+    const QString xmlPath = AppPath_service::pastaArmazenamentoArquivos() + "/" + xmlPathRelativo;
+    if (!QFileInfo::exists(xmlPath)) {
+        if (erro)
+            *erro = "XML da nota não encontrado.";
+        return false;
+    }
+
+    auto *nf = AcbrManager::instance()->nfe();
+    if (!nf) {
+        if (erro)
+            *erro = "O módulo fiscal não está disponível para imprimir a nota.";
+        return false;
+    }
+
+    try {
+        nf->ConfigGravarValor("DANFE", "Impressora", impressora.toStdString());
+        nf->ConfigGravarValor("DANFE", "MostraPreview", "0");
+        nf->ConfigGravarValor("DANFENFCe", "ImprimeItens", "1");
+        nf->ConfigGravarValor("DANFENFCe", "ViaConsumidor", "1");
+        nf->LimparLista();
+        nf->CarregarXML(xmlPath.toStdString());
+        nf->Imprimir(impressora.toStdString(), 1, "", false, false, true, std::nullopt);
+    } catch (const std::exception &e) {
+        if (erro)
+            *erro = QString::fromLocal8Bit(e.what());
+        return false;
+    }
+    return true;
+}
+
 bool DanfeUtil::abrirDanfe(qlonglong idVenda){
     QString xmlPathRelativo = notaServ.getXmlPathFromIdVenda(idVenda);
     if (xmlPathRelativo.isEmpty()) {

@@ -25,6 +25,8 @@
 #include "delegatecatalogopdv.h"
 #include <QIdentityProxyModel>
 #include <QLabel>
+#include <QFont>
+#include <QMargins>
 #include <QResizeEvent>
 #include <QSettings>
 #include "infra/apppath_service.h"
@@ -229,9 +231,11 @@ venda::venda(QWidget *parent) :
     ui->Chk_NovaVenda->setChecked(lerPreferenciaPdv("nova_venda_ao_finalizar", true));
     connect(ui->Chk_NovaVenda, &QCheckBox::toggled, this,
             [](bool marcado) { gravarPreferenciaPdv("nova_venda_ao_finalizar", marcado); });
-    ui->CheckImprimirCupomPag->setChecked(lerPreferenciaPdv("imprimir_cupom", false));
-    connect(ui->CheckImprimirCupomPag, &QCheckBox::toggled, this,
-            [](bool marcado) { gravarPreferenciaPdv("imprimir_cupom", marcado); });
+    ui->CheckImprimirCupomPag->setChecked(true);
+    connect(ui->CheckImprimirCupomPag, &QCheckBox::toggled, this, [this](bool marcado) {
+        if (!marcado)
+            ui->CheckImprimirCupomPag->setChecked(true);
+    });
 
     // Alt+1..4 escolhem a forma de pagamento (só valem na página de pagamento)
     const QList<QPair<Qt::Key, int>> atalhosForma = {
@@ -391,6 +395,7 @@ void venda::irParaPagina(int pagina)
         break;
     case 2:
         ui->Btn_Aceitar->setText(configDTO.emitNfFiscal ? "Próximo: Nota Fiscal →" : "✓ Confirmar Venda (F10)");
+        QTimer::singleShot(0, this, [this]() { igualarCartoesPagamento(); });
         if (ui->Ledit_Recebido->isHidden()) {
             ui->Btn_Aceitar->setFocus();
         } else {
@@ -543,13 +548,13 @@ void venda::configurarPaginaPagamento()
         ui->Ledit_Recebido->setText(rascunhoPendente.recebido);
     } else {
         // defaults para nova venda: dinheiro — hide taxa, show troco
-        ui->lbl_taxa->hide();
-        ui->Ledit_Taxa->hide();
-        ui->label_2->show();
-        ui->label_3->show();
+        ui->frame_Taxa->hide();
         ui->Ledit_Recebido->show();
         ui->Lbl_Troco->show();
+        ui->frame_Recebido->show();
+        ui->frame_Troco->show();
     }
+    ui->CheckImprimirCupomPag->setChecked(true);
 }
 
 void venda::configurarPaginaNF()
@@ -614,8 +619,9 @@ void venda::on_CBox_FormaPagamento_activated(int index)
 
     switch (index) {
     case 0: // dinheiro
-        ui->label_2->show(); ui->label_3->show(); ui->Ledit_Recebido->show(); ui->Lbl_Troco->show();
-        ui->lbl_taxa->hide(); ui->Ledit_Taxa->hide();
+        ui->Ledit_Recebido->show(); ui->Lbl_Troco->show();
+        ui->frame_Recebido->show(); ui->frame_Troco->show();
+        ui->frame_Taxa->hide();
         ui->Ledit_Recebido->setText(Total());
         ui->Lbl_Troco->setText("0");
         ui->Ledit_Desconto->setText("0");
@@ -624,24 +630,24 @@ void venda::on_CBox_FormaPagamento_activated(int index)
         ui->Lbl_Total->setText(Total());
         break;
     case 2: // crédito
-        ui->label_2->hide(); ui->label_3->hide(); ui->Ledit_Recebido->hide(); ui->Lbl_Troco->hide();
-        ui->lbl_taxa->show(); ui->Ledit_Taxa->show();
+        ui->frame_Recebido->hide(); ui->frame_Troco->hide();
+        ui->Ledit_Taxa->show(); ui->frame_Taxa->show();
         ui->Ledit_Desconto->setText("0");
         ui->Ledit_Taxa->setText(taxaCredito);
         ui->Lbl_TotalTaxa->setText(portugues.toString(obterValorFinal(taxaCredito, "0"), 'f', 2));
         ui->Lbl_Total->setText(ui->Lbl_TotalTaxa->text());
         break;
     case 3: // débito
-        ui->label_2->hide(); ui->label_3->hide(); ui->Ledit_Recebido->hide(); ui->Lbl_Troco->hide();
-        ui->lbl_taxa->show(); ui->Ledit_Taxa->show();
+        ui->frame_Recebido->hide(); ui->frame_Troco->hide();
+        ui->Ledit_Taxa->show(); ui->frame_Taxa->show();
         ui->Ledit_Desconto->setText("0");
         ui->Ledit_Taxa->setText(taxaDebito);
         ui->Lbl_TotalTaxa->setText(portugues.toString(obterValorFinal(taxaDebito, "0"), 'f', 2));
         ui->Lbl_Total->setText(ui->Lbl_TotalTaxa->text());
         break;
     default:
-        ui->label_2->hide(); ui->label_3->hide(); ui->Ledit_Recebido->hide(); ui->Lbl_Troco->hide();
-        ui->lbl_taxa->hide(); ui->Ledit_Taxa->hide();
+        ui->frame_Recebido->hide(); ui->frame_Troco->hide();
+        ui->frame_Taxa->hide();
         ui->Ledit_Desconto->setText("0");
         ui->Ledit_Taxa->setText("0");
         ui->Lbl_TotalTaxa->setText(Total());
@@ -657,8 +663,8 @@ void venda::on_Ledit_Recebido_textChanged(const QString &)
     ui->Lbl_Troco->setText(portugues.toString(troco, 'f', 2));
     // verde quando há troco, vermelho quando falta dinheiro
     ui->Lbl_Troco->setStyleSheet(troco < 0
-        ? "font: 700 40pt \"Ubuntu\"; color: rgb(191,61,64);"
-        : "font: 700 40pt \"Ubuntu\"; color: rgb(30,140,70);");
+        ? "font: 700 72pt \"Ubuntu\"; color: rgb(191,61,64);"
+        : "font: 700 72pt \"Ubuntu\"; color: rgb(30,140,70);");
 }
 
 void venda::on_Ledit_Taxa_textChanged(const QString &) { descontoTaxa(); }
@@ -832,20 +838,12 @@ void venda::terminarPagamento()
     vendaFinalizada = true;
     const QString totalVenda = ui->Lbl_Total->text();
     const QString mensagem = QString("Venda realizada com sucesso. Total: R$ %1").arg(totalVenda);
-    const bool novaVenda = ui->Chk_NovaVenda->isChecked();
     const int atrasoAviso = (waitDialog && waitDialog->isVisible()) ? 1600 : 0;
 
     descartarRascunho();
     emit vendaConcluida();
-    if (novaVenda) {
-        reiniciarVenda(false);
-        QTimer::singleShot(atrasoAviso, this, [this, mensagem]() { mostrarToast(mensagem); });
-    } else {
-        QTimer::singleShot(atrasoAviso, this, [this, mensagem]() {
-            QMessageBox::information(this, "Venda", mensagem);
-            this->close();
-        });
-    }
+    reiniciarVenda(false);
+    QTimer::singleShot(atrasoAviso, this, [this, mensagem]() { mostrarToast(mensagem); });
 }
 
 void venda::mostrarToast(const QString &texto)
@@ -861,6 +859,10 @@ void venda::mostrarToast(const QString &texto)
         toastTimer->setSingleShot(true);
         connect(toastTimer, &QTimer::timeout, toastSucesso, &QWidget::hide);
     }
+    QFont fonte(QStringLiteral("Segoe UI"));
+    fonte.setPointSize(12);
+    fonte.setBold(true);
+    toastSucesso->setFont(fonte);
     toastSucesso->setText(texto);
     posicionarToast();
     toastSucesso->show();
@@ -872,9 +874,9 @@ void venda::posicionarToast()
 {
     if (!toastSucesso)
         return;
-    const int largura = qBound(280, toastSucesso->fontMetrics().horizontalAdvance(toastSucesso->text()) + 48,
-                               qMax(280, width() - 24));
-    const int altura = 52;
+    const int largura = qBound(420, toastSucesso->fontMetrics().horizontalAdvance(toastSucesso->text()) + 72,
+                               qMax(420, width() - 24));
+    const int altura = 56;
     toastSucesso->setGeometry(qMax(8, (width() - largura) / 2), 74, largura, altura);
 }
 
@@ -882,6 +884,23 @@ void venda::resizeEvent(QResizeEvent *event)
 {
     QWidget::resizeEvent(event);
     posicionarToast();
+    igualarCartoesPagamento();
+}
+
+void venda::igualarCartoesPagamento()
+{
+    const int espaco = 24;
+    if (ui->hl_p2->spacing() != espaco)
+        ui->hl_p2->setSpacing(espaco);
+    const QMargins margem = ui->hl_p2->contentsMargins();
+    const int disponivel = ui->page_Pagamento->height() - margem.top() - margem.bottom() - espaco;
+    const int altura = qMax(160, disponivel / 2);
+    if (ui->frame_Campos->height() == altura && ui->frame_Pagar->height() == altura)
+        return;
+    ui->frame_Campos->setFixedHeight(altura);
+    ui->frame_Resumo->setFixedHeight(altura);
+    ui->frame_Pagar->setFixedHeight(altura);
+    ui->frame_Troco->setFixedHeight(altura);
 }
 
 void venda::definirClientePadrao()

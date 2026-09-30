@@ -14,7 +14,7 @@ class Recibo_service : public QObject
     Q_OBJECT
 public:
     explicit Recibo_service(QObject *parent = nullptr);
-    void imprimirReciboVenda(qlonglong idvenda);
+    bool imprimirReciboVenda(qlonglong idvenda, QString *erro = nullptr);
 private:
     QSqlDatabase db;
     QLocale portugues;

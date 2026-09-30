@@ -365,7 +365,12 @@ void Vendas::on_Tview_Vendas2_customContextMenuRequested(const QPoint &pos)
 
 bool Vendas::imprimirReciboVenda(qlonglong idvenda){
     Recibo_service reciboServ;
-    reciboServ.imprimirReciboVenda(idvenda);
+    QString erro;
+    if (!reciboServ.imprimirReciboVenda(idvenda, &erro)) {
+        QMessageBox::warning(nullptr, "Impressora",
+                             erro.isEmpty() ? "Não foi possível imprimir o cupom." : erro);
+        return false;
+    }
     return true;
 }
 void Vendas::imprimirReciboVendaSelec(QString id){
@@ -404,7 +409,12 @@ void Vendas::on_Btn_ReimprimirNota_clicked()
     }
 
     if (vendaServ.vendaPossuiNota(idVenda.toLongLong())) {
-        abrirDanfeXml(idVenda);
+        QSharedPointer<DanfeUtil> danfe(new DanfeUtil(this));
+        QString erro;
+        if (!danfe->imprimirNotaCliente(idVenda.toLongLong(), &erro)) {
+            QMessageBox::warning(this, "Impressora",
+                                 erro.isEmpty() ? "Não foi possível imprimir a nota." : erro);
+        }
         return;
     }
 
