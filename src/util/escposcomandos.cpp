@@ -101,13 +101,14 @@ QByteArray EscPosComandos::underline(bool on)
 
 QByteArray EscPosComandos::tamanhoFonte(int width, int height)
 {
-    // ESC ! n  ->  bits 7-4 = multiplicador de largura (1-8)
-    //                bits 3-0 = multiplicador de altura (1-8)
+    // GS ! n  ->  bits 6-4 = multiplicador de largura (1-8)
+    //               bits 2-0 = multiplicador de altura (1-8)
+    // (ESC ! n nao serve: seus bits selecionam Fonte B/negrito/dobro, nao multiplicador)
     const int w = qBound(1, width, 8);
     const int h = qBound(1, height, 8);
 
     QByteArray cmd;
-    cmd.append('\x1B');
+    cmd.append('\x1D');
     cmd.append('!');
     cmd.append(char(((w - 1) << 4) | (h - 1)));
 

@@ -256,7 +256,7 @@ EscPosPrinter_service::Resultado EscPosPrinter_service::imprimirNomePreco(
         dados += EscPosComandos::bold(false);
         dados += EscPosComandos::alinharEsquerda();
 
-        dados += EscPosComandos::feed(2);
+        dados += EscPosComandos::feed(4);
 
         if (i != quantidade - 1)
             dados += EscPosComandos::cortar();
