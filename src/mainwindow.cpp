@@ -136,6 +136,14 @@ MainWindow::MainWindow(QWidget *parent)
     actionMenuPrintBarCode3 = new QAction(this);
     actionMenuPrintBarCode3->setText("3 Etiquetas");
     connect(actionMenuPrintBarCode3,SIGNAL(triggered(bool)),this, SLOT(imprimirEtiqueta3()));
+
+    actionMenuPrintNomePreco1 = new QAction(this);
+    actionMenuPrintNomePreco1->setText("1 Etiqueta");
+    connect(actionMenuPrintNomePreco1,SIGNAL(triggered(bool)),this, SLOT(imprimirNomePreco1()));
+
+    actionMenuPrintNomePreco3 = new QAction(this);
+    actionMenuPrintNomePreco3->setText("3 Etiquetas");
+    connect(actionMenuPrintNomePreco3,SIGNAL(triggered(bool)),this, SLOT(imprimirNomePreco3()));
     // -- delegates --
     DelegatePrecoF2 *delegatePreco = new DelegatePrecoF2(this);
     ui->Tview_Produtos->setItemDelegateForColumn(3,delegatePreco);
@@ -384,6 +392,29 @@ void MainWindow::imprimirEtiqueta3(){
     }
 }
 
+void MainWindow::imprimirNomePreco1(){
+    imprimirNomePreco(1);
+}
+
+void MainWindow::imprimirNomePreco3(){
+    imprimirNomePreco(3);
+}
+
+void MainWindow::imprimirNomePreco(int quantidade){
+    QItemSelectionModel *selectionModel = ui->Tview_Produtos->selectionModel();
+    QModelIndex selectedIndex = selectionModel->selectedIndexes().first();
+    QVariant descVariant = ui->Tview_Produtos->model()->data(ui->Tview_Produtos->model()->index(selectedIndex.row(), 2));
+    QVariant precoVariant = ui->Tview_Produtos->model()->data(ui->Tview_Produtos->model()->index(selectedIndex.row(), 3));
+
+    EscPosPrinter_service printer;
+    auto r1 = printer.imprimirNomePreco(configDTO.impressoraNomeDispositivo, quantidade,
+                                        descVariant.toString(), precoVariant.toDouble());
+    if(!r1.ok){
+        QMessageBox::warning(this, "Erro", r1.msg);
+        return;
+    }
+}
+
 
 void MainWindow::on_actionRealizar_Venda_triggered()
 {
@@ -449,6 +480,7 @@ void MainWindow::on_Tview_Produtos_customContextMenuRequested(const QPoint &pos)
 
     QMenu menu(this);
     QMenu *imprimirMenu = new QMenu("Imprimir Etiqueta Código de Barra", this);
+    QMenu *gondolaMenu = new QMenu("Imprimir Nome e Preço (Gondola)", this);
 
     menu.addAction(actionMenuAlterarProd);
     menu.addAction(actionMenuDeletarProd);
@@ -458,6 +490,10 @@ void MainWindow::on_Tview_Produtos_customContextMenuRequested(const QPoint &pos)
     imprimirMenu->addAction(actionMenuPrintBarCode1);
     imprimirMenu->addAction(actionMenuPrintBarCode3);
     menu.addMenu(imprimirMenu);
+    gondolaMenu->setIcon(iconImpressora);
+    gondolaMenu->addAction(actionMenuPrintNomePreco1);
+    gondolaMenu->addAction(actionMenuPrintNomePreco3);
+    menu.addMenu(gondolaMenu);
 
     menu.exec(ui->Tview_Produtos->viewport()->mapToGlobal(pos));
 }

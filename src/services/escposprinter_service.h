@@ -20,6 +20,8 @@ public:
     EscPosPrinter_service::Resultado imprimirEtiquetas(const QString &printerName, int quantidade,
                                                        const QImage &barcodeImage, const QString &descricao,
                                                        double preco);
+    EscPosPrinter_service::Resultado imprimirNomePreco(const QString &printerName, int quantidade,
+                                                       const QString &descricao, double preco);
 private:
 signals:
 };

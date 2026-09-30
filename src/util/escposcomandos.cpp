@@ -74,12 +74,42 @@ QByteArray EscPosComandos::alinharEsquerda()
     return QByteArray("\x1B\x61\x00", 3);
 }
 
+QByteArray EscPosComandos::alinharDireita()
+{
+    return QByteArray("\x1B\x61\x02", 3);
+}
+
 QByteArray EscPosComandos::bold(bool on)
 {
     QByteArray cmd;
     cmd.append('\x1B');
     cmd.append('\x45');
     cmd.append(on ? '\x01' : '\x00');
+
+    return cmd;
+}
+
+QByteArray EscPosComandos::underline(bool on)
+{
+    QByteArray cmd;
+    cmd.append('\x1B');
+    cmd.append('\x2D');
+    cmd.append(on ? '\x01' : '\x00');
+
+    return cmd;
+}
+
+QByteArray EscPosComandos::tamanhoFonte(int width, int height)
+{
+    // ESC ! n  ->  bits 7-4 = multiplicador de largura (1-8)
+    //                bits 3-0 = multiplicador de altura (1-8)
+    const int w = qBound(1, width, 8);
+    const int h = qBound(1, height, 8);
+
+    QByteArray cmd;
+    cmd.append('\x1B');
+    cmd.append('!');
+    cmd.append(char(((w - 1) << 4) | (h - 1)));
 
     return cmd;
 }

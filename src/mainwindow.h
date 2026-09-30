@@ -77,6 +77,9 @@ private slots:
     void imprimirEtiqueta1();
     void imprimirEtiqueta3();
 
+    void imprimirNomePreco1();
+    void imprimirNomePreco3();
+
     void on_actionConfig_triggered();
 
     void on_Ledit_Pesquisa_textChanged(const QString &arg1);
@@ -117,6 +120,8 @@ private:
     QAction* actionSetLocalProd;
     QAction* actionMenuPrintBarCode1;
     QAction* actionMenuPrintBarCode3;
+    QAction* actionMenuPrintNomePreco1;
+    QAction* actionMenuPrintNomePreco3;
     QAction* actionVerProduto;
     Produto_Service *produtoService;
     Config_service *confServ = new Config_service(this);
@@ -132,6 +137,7 @@ private:
 
 
     void mostrarProdutoPorCodigoBarras(const QString &codigo);
+    void imprimirNomePreco(int quantidade);
     void iniciarMigration();
     void atualizarConfigDTO();
 protected:

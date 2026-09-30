@@ -1,12 +1,63 @@
 #include "escposprinter_service.h"
 #include <QProcess>
 #include <QLocale>
+#include <QStringList>
 #include "../util/escposcomandos.h"
 
 #ifdef Q_OS_WIN
 #include <windows.h>
 #include <winspool.h>
 #endif
+
+namespace {
+
+// Fonte 2x na bobina de 80mm (576 pontos úteis) aceita 22 caracteres por linha.
+constexpr int maximoCaracteresLinha = 22;
+constexpr int maximoLinhasDescricao = 3;
+
+QStringList quebrarParaLinhas(const QString &texto, int maximoCaracteres)
+{
+    QStringList linhas;
+    QString atual;
+
+    const QStringList palavras = texto.split(' ', Qt::SkipEmptyParts);
+
+    for (const QString &palavra : palavras)
+    {
+        QString candidata = atual.isEmpty() ? palavra : atual + " " + palavra;
+
+        if (candidata.length() <= maximoCaracteres)
+        {
+            atual = candidata;
+            continue;
+        }
+
+        // palavra única maior que a linha: cortar na força para não estourar a largura
+        if (atual.isEmpty())
+        {
+            for (int posicao = 0; posicao < palavra.length(); posicao += maximoCaracteres)
+                linhas.append(palavra.mid(posicao, maximoCaracteres));
+
+            continue;
+        }
+
+        linhas.append(atual);
+        atual = palavra;
+    }
+
+    if (!atual.isEmpty())
+        linhas.append(atual);
+
+    if (linhas.isEmpty())
+        linhas.append(texto);
+
+    if (linhas.size() > maximoLinhasDescricao)
+        linhas = linhas.mid(0, maximoLinhasDescricao);
+
+    return linhas;
+}
+
+}
 
 EscPosPrinter_service::EscPosPrinter_service(QObject *parent)
 : QObject(parent)
@@ -153,6 +204,59 @@ EscPosPrinter_service::Resultado EscPosPrinter_service::imprimirEtiquetas(
         dados += "\n";
 
         dados += EscPosComandos::feed(4);
+
+        if (i != quantidade - 1)
+            dados += EscPosComandos::cortar();
+    }
+
+    dados += EscPosComandos::cortar();
+
+    return imprimirRaw(printerName, dados);
+}
+
+EscPosPrinter_service::Resultado EscPosPrinter_service::imprimirNomePreco(
+    const QString &printerName,
+    int quantidade,
+    const QString &descricao,
+    double preco)
+{
+    if(descricao.trimmed().isEmpty())
+    {
+        return {false, "Descrição do produto vazia"};
+    }
+
+    QLocale pt(QLocale::Portuguese, QLocale::Brazil);
+
+    const QString precoTexto = QString("R$ %1").arg(pt.toString(preco, 'f', 2));
+    const QStringList linhasNome = quebrarParaLinhas(descricao.simplified(), maximoCaracteresLinha);
+
+    QByteArray dados;
+    dados += EscPosComandos::inicializar();
+
+    for (int i = 0; i < quantidade; ++i)
+    {
+        // nome do produto em fonte 2x2 negrito, centralizado
+        dados += EscPosComandos::alinharCentro();
+        dados += EscPosComandos::tamanhoFonte(2, 2);
+        dados += EscPosComandos::bold(true);
+
+        for (const QString &linha : linhasNome)
+        {
+            dados += linha.toLatin1();
+            dados += "\n";
+        }
+
+        // preço em fonte 4x4 negrito, centralizado
+        dados += "\n";
+        dados += EscPosComandos::tamanhoFonte(4, 4);
+        dados += precoTexto.toLatin1();
+        dados += "\n";
+
+        dados += EscPosComandos::tamanhoFonte(1, 1);
+        dados += EscPosComandos::bold(false);
+        dados += EscPosComandos::alinharEsquerda();
+
+        dados += EscPosComandos::feed(2);
 
         if (i != quantidade - 1)
             dados += EscPosComandos::cortar();
