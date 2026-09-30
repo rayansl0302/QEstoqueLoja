@@ -12,9 +12,11 @@ notafiscal_repository::notafiscal_repository(QObject *parent)
 }
 
 
-bool notafiscal_repository::salvarResNFe(NotaFiscalDTO resumoNota){
+bool notafiscal_repository::salvarResNFe(NotaFiscalDTO resumoNota, QString *erro){
     if(!DatabaseConnection_service::open()){
         qDebug() << "db nao aberto ao salvar resumo nota";
+        if (erro)
+            *erro = "Não foi possível abrir o banco de dados.";
         return false;
     }
     QString dataFormatada = DataUtil::getDataAgoraUS();
@@ -37,16 +39,18 @@ bool notafiscal_repository::salvarResNFe(NotaFiscalDTO resumoNota){
     query.bindValue(":cnpjemit", resumoNota.cnpjEmit);
     query.bindValue(":chnf", resumoNota.chNfe);
     query.bindValue(":nprot", resumoNota.nProt);
-    query.bindValue(":cuf", "");
+    query.bindValue(":cuf", resumoNota.cuf);
     query.bindValue(":finalidade", resumoNota.finalidade);
-    query.bindValue(":saida", "0");
-    query.bindValue(":nnf", "0");
-    query.bindValue(":serie", "");
+    query.bindValue(":saida", 0);
+    query.bindValue(":nnf", resumoNota.nnf);
+    query.bindValue(":serie", QString::number(resumoNota.serie));
     query.bindValue(":dhemi", dhemiFormatada);
     query.bindValue(":adicionadoem", dataFormatada);
 
     if(!query.exec()){
         qDebug() << "ERRO INSERT notas_fiscais:" << query.lastError().text();
+        if (erro)
+            *erro = query.lastError().text();
         return false;
     } else {
         qDebug() << "Resumo nota salvo com sucesso!";
@@ -76,9 +80,11 @@ qlonglong notafiscal_repository::getIdFromChave(QString chnfe){
     return id_nf.toLongLong();
 }
 
-bool notafiscal_repository::updateWhereChave(NotaFiscalDTO dto, QString chave){
+bool notafiscal_repository::updateWhereChave(NotaFiscalDTO dto, QString chave, QString *erro){
     if(!DatabaseConnection_service::open()){
         qDebug() << "Banco nao abriu updateWhereChave()";
+        if (erro)
+            *erro = "Não foi possível abrir o banco de dados.";
         return false;
     }
 
@@ -120,13 +126,18 @@ bool notafiscal_repository::updateWhereChave(NotaFiscalDTO dto, QString chave){
     q.bindValue(":chnfe", chave);
     q.bindValue(":atualizadoem", dataAgoraFormatada);
     q.bindValue(":finalidade", "ENTRADA EXTERNA");
-    q.bindValue(":saida", "0");
-    q.bindValue(":idcliente", dto.idEmissorCliente);
+    q.bindValue(":saida", 0);
+    if (dto.idEmissorCliente <= 0)
+        q.bindValue(":idcliente", QVariant());
+    else
+        q.bindValue(":idcliente", dto.idEmissorCliente);
     q.bindValue(":dhemi", dhemiFormatada);
 
 
     if (!q.exec()){
         qDebug() << "Erro ao atualizar NF:" << q.lastError();
+        if (erro)
+            *erro = q.lastError().text();
         return false;
     }else{
         qDebug() << "Nota fiscal atualizada com sucesso!";

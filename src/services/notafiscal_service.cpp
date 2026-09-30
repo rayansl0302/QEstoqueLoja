@@ -13,11 +13,15 @@ NotaFiscal_service::Resultado NotaFiscal_service::salvarResNfe(NotaFiscalDTO res
     if(!resumoNota.chNfe.isEmpty() && notaRepo.getIdFromChave(resumoNota.chNfe) > 0){
         return {true, NotaErro::Nenhum, "Nota já registrada."};
     }
-    if(notaRepo.salvarResNFe(resumoNota)){
+    QString detalhe;
+    if(notaRepo.salvarResNFe(resumoNota, &detalhe)){
         qDebug() << "Resumo nota salvo com sucesso!";
         return {true, NotaErro::Nenhum, ""};
     }else{
-        return {false, NotaErro::Salvar, "Erro ao salvar resumo NFe."};
+        const QString msg = detalhe.isEmpty()
+            ? QString("Erro ao salvar resumo NFe.")
+            : QString("Erro ao salvar resumo NFe: %1").arg(detalhe);
+        return {false, NotaErro::Salvar, msg};
     }
 
 }
@@ -28,10 +32,14 @@ qlonglong NotaFiscal_service::getIdFromChave(QString chnfe){
 
 NotaFiscal_service::Resultado NotaFiscal_service::updateWhereChave(NotaFiscalDTO dto,
                                                                    QString chave){
-    if(notaRepo.updateWhereChave(dto,chave)){
+    QString detalhe;
+    if(notaRepo.updateWhereChave(dto, chave, &detalhe)){
         return {true, NotaErro::Nenhum, ""};
     }else{
-        return {false, NotaErro::Update, "Erro ao atualizar Nota Fiscal"};
+        const QString msg = detalhe.isEmpty()
+            ? QString("Erro ao atualizar Nota Fiscal")
+            : QString("Erro ao atualizar Nota Fiscal: %1").arg(detalhe);
+        return {false, NotaErro::Update, msg};
     }
 }
 

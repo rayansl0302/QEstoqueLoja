@@ -191,6 +191,9 @@ EntradaNfe_service::Resultado EntradaNfe_service::importarConteudo(const QByteAr
         resumo.nProt = textoTag(prot, "nProt");
         resumo.tpAmb = nf.tpAmb;
         resumo.saida = false;
+        resumo.nnf = nf.nnf;
+        resumo.serie = nf.serie;
+        resumo.cuf = nf.cuf;
         resumo.valorTotal = nf.valorTotal;
         resumo.xmlPath = caminhoRelativo;
         const QDateTime dt = QDateTime::fromString(nf.dhEmi, Qt::ISODate);

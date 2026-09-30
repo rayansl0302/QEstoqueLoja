@@ -15,9 +15,9 @@ class notafiscal_repository : public QObject
     Q_OBJECT
 public:
     explicit notafiscal_repository(QObject *parent = nullptr);
-    bool salvarResNFe(NotaFiscalDTO resumoNota);
+    bool salvarResNFe(NotaFiscalDTO resumoNota, QString *erro = nullptr);
     qlonglong getIdFromChave(QString chnfe);
-    bool updateWhereChave(NotaFiscalDTO dto, QString chave);
+    bool updateWhereChave(NotaFiscalDTO dto, QString chave, QString *erro = nullptr);
     qlonglong getIdFromIdVenda(qlonglong idvenda);
     qlonglong getProximoNNF55(QString serie, bool tpAmb, qlonglong nnfConfigurado);
     NotaFiscalDTO getNotaNormalFromIdVenda(qlonglong idvenda);
