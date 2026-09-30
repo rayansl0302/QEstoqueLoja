@@ -68,6 +68,7 @@ Vendas_service::ResultadoInsercaoRN inserirVendaTeste(qlonglong idProd, double q
 void TestVendasService::init()
 {
     db = DatabaseConnection_service::db();
+    TestDbFactory::garantirCaixaAberto();
 }
 
 void TestVendasService::cleanup()
@@ -180,7 +181,7 @@ void TestVendasService::deletar_venda_ok()
     QVERIFY(ri.ok);
 
     Vendas_service service;
-    auto rd = service.deletarVendaRegraNegocio(ri.idVendaInserida, false);
+    auto rd = service.deletarVendaRegraNegocio(ri.idVendaInserida, false, "Teste");
     QVERIFY(rd.ok);
 
     DatabaseConnection_service::open();

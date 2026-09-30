@@ -130,10 +130,23 @@ void EntradasVendasPrazo::on_btn_DeletarEntrada_clicked()
             );
         // Verifica a resposta do usuário
         if (resposta == QMessageBox::Yes) {
-            auto res = entradaServ.deletarEntradaPorId(idEntradaSelec.toLongLong());
+            // recebimento de caixa já fechado não pode ser excluído
+            const qlonglong idEntrada = idEntradaSelec.toLongLong();
+            auto rc = caixaServ.podeRemoverRecebimento(idEntrada);
+            if (!rc.ok) {
+                QMessageBox::warning(this, "Caixa", rc.msg);
+                return;
+            }
+            auto res = entradaServ.deletarEntradaPorId(idEntrada);
             if (!res.ok) {
                 qDebug() << "Erro ao deletar entrada:" << res.msg;
+                QMessageBox::warning(this, "Erro", "Não foi possível excluir a entrada: " + res.msg);
+                return;
             }
+            // só depois da entrada apagada tira o lançamento do caixa (evita ficar sem um dos dois)
+            auto rm = caixaServ.removerRecebimento(idEntrada);
+            if (!rm.ok)
+                qDebug() << "Recebimento não removido do caixa:" << rm.msg;
             atualizarTabelaPag();
             emit entradaConcluida();
         } else {

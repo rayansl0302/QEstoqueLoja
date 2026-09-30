@@ -762,7 +762,7 @@ void venda::terminarPagamento()
                     result1.msg + "\nDeseja continuar mesmo assim?",
                     QMessageBox::Yes | QMessageBox::No);
                 if (resp == QMessageBox::No) {
-                    auto r1 = vendaServ.deletarVendaRegraNegocio(newVenda.id, false);
+                    auto r1 = vendaServ.deletarVendaRegraNegocio(newVenda.id, false, "Falha ao emitir a nota fiscal.");
                     if (!r1.ok) QMessageBox::warning(this, "Erro", r1.msg);
                     return false;
                 }
@@ -773,7 +773,7 @@ void venda::terminarPagamento()
             waitDialog->allowClose();
             if (!result1.ok) {
                 waitDialog->setMessage(result1.msg);
-                auto r1 = vendaServ.deletarVendaRegraNegocio(newVenda.id, false);
+                auto r1 = vendaServ.deletarVendaRegraNegocio(newVenda.id, false, "Falha ao emitir a nota fiscal.");
                 if (!r1.ok) QMessageBox::warning(this, "Erro", r1.msg);
                 return false;
             }
@@ -788,7 +788,7 @@ void venda::terminarPagamento()
                 auto resp = QMessageBox::question(this, "Atenção",
                     r.msg + "\nDeseja continuar mesmo assim?", QMessageBox::Yes | QMessageBox::No);
                 if (resp == QMessageBox::No) {
-                    auto r1 = vendaServ.deletarVendaRegraNegocio(newVenda.id, false);
+                    auto r1 = vendaServ.deletarVendaRegraNegocio(newVenda.id, false, "Falha ao emitir a nota fiscal.");
                     if (!r1.ok) QMessageBox::warning(this, "Erro", r1.msg);
                     return;
                 }
@@ -800,7 +800,7 @@ void venda::terminarPagamento()
             waitDialog->allowClose();
             if (!r.ok) {
                 waitDialog->setMessage(r.msg);
-                auto r1 = vendaServ.deletarVendaRegraNegocio(newVenda.id, false);
+                auto r1 = vendaServ.deletarVendaRegraNegocio(newVenda.id, false, "Falha ao emitir a nota fiscal.");
                 if (!r1.ok) QMessageBox::warning(this, "Erro", r1.msg);
                 return;
             }
@@ -813,7 +813,7 @@ void venda::terminarPagamento()
                 auto resp = QMessageBox::question(this, "Atenção",
                     r.msg + "\nDeseja continuar mesmo assim?", QMessageBox::Yes | QMessageBox::No);
                 if (resp == QMessageBox::No) {
-                    auto r1 = vendaServ.deletarVendaRegraNegocio(newVenda.id, false);
+                    auto r1 = vendaServ.deletarVendaRegraNegocio(newVenda.id, false, "Falha ao emitir a nota fiscal.");
                     if (!r1.ok) QMessageBox::warning(this, "Erro", r1.msg);
                     return;
                 }
@@ -825,7 +825,7 @@ void venda::terminarPagamento()
             waitDialog->allowClose();
             if (!r.ok) {
                 waitDialog->setMessage(r.msg);
-                auto r1 = vendaServ.deletarVendaRegraNegocio(newVenda.id, false);
+                auto r1 = vendaServ.deletarVendaRegraNegocio(newVenda.id, false, "Falha ao emitir a nota fiscal.");
                 if (!r1.ok) QMessageBox::warning(this, "Erro", r1.msg);
                 return;
             }

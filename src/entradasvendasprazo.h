@@ -6,6 +6,7 @@
 #include <QLocale>
 #include "services/entradasvendas_service.h"
 #include "services/vendas_service.h"
+#include "services/caixa_service.h"
 
 namespace Ui {
 class EntradasVendasPrazo;
@@ -33,6 +34,7 @@ private:
     QLocale portugues;
     EntradasVendas_service entradaServ;
     Vendas_service vendasServ;
+    Caixa_service caixaServ;
     QString idVenda, valorVenda, dataHoraVenda, clienteVenda;
     float valor_Venda;
     QSqlQueryModel *modeloEntradas = new QSqlQueryModel;

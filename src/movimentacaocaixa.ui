@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MovimentacaoCaixa</class>
+ <widget class="QDialog" name="MovimentacaoCaixa">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>440</width>
+    <height>360</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Sangria / Suprimento</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QLabel#Lbl_Titulo { font: 700 14pt &quot;Ubuntu&quot;; color: rgb(30, 41, 59); }
+QLabel#Lbl_Caixa { color: rgb(100, 116, 139); }
+QLineEdit { min-height: 32px; font: 12pt &quot;Segoe UI&quot;; }
+QPushButton { min-height: 36px; padding: 0 18px; font: 600 10pt &quot;Segoe UI&quot;; border-radius: 6px; }
+QPushButton#Btn_Confirmar { background-color: rgb(43, 132, 191); color: white; }
+QPushButton#Btn_Confirmar:hover { background-color: rgb(13, 92, 161); }</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="spacing">
+    <number>10</number>
+   </property>
+   <property name="leftMargin">
+    <number>20</number>
+   </property>
+   <property name="topMargin">
+    <number>18</number>
+   </property>
+   <property name="rightMargin">
+    <number>20</number>
+   </property>
+   <property name="bottomMargin">
+    <number>18</number>
+   </property>
+   <item>
+    <widget class="QLabel" name="Lbl_Titulo">
+     <property name="text">
+      <string>Movimentação de caixa</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="Lbl_Caixa">
+     <property name="text">
+      <string>Caixa</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="hl_tipo">
+     <item>
+      <widget class="QRadioButton" name="Rb_Sangria">
+       <property name="text">
+        <string>Sangria (retirar dinheiro da gaveta)</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QRadioButton" name="Rb_Suprimento">
+       <property name="text">
+        <string>Suprimento (colocar dinheiro)</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Valor (R$):</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLineEdit" name="Ledit_Valor">
+     <property name="placeholderText">
+      <string>0,00</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>Motivo (obrigatório):</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPlainTextEdit" name="PTEdit_Motivo">
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>80</height>
+      </size>
+     </property>
+     <property name="placeholderText">
+      <string>Ex.: depósito no banco, pagamento de fornecedor, reforço de troco...</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="Btn_Cancelar">
+       <property name="text">
+        <string>Cancelar</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="Btn_Confirmar">
+       <property name="text">
+        <string>Confirmar</string>
+       </property>
+       <property name="default">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

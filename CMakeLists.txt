@@ -102,6 +102,9 @@ set(QESTOQUE_SOURCES
     src/services/produtonota_service.cpp
     src/services/entradanfe_service.cpp
     src/services/estoquenota_service.cpp
+    src/services/operador_service.cpp
+    src/services/caixa_service.cpp
+    src/services/relatoriocaixa_service.cpp
     src/services/vendas_service.cpp
     src/services/produtovenda_service.cpp
     src/services/entradasvendas_service.cpp
@@ -120,6 +123,8 @@ set(QESTOQUE_SOURCES
     src/repository/notafiscal_repository.cpp
     src/repository/produtonota_repository.cpp
     src/repository/vendas_repository.cpp
+    src/repository/operador_repository.cpp
+    src/repository/caixa_repository.cpp
     src/repository/produtovenda_repository.cpp
     src/repository/entradasvendas_repository.cpp
 
@@ -135,6 +140,7 @@ set(QESTOQUE_SOURCES
     src/util/ACBrConsultaCNPJ.cpp
     src/util/ACBrMail.cpp
     src/util/vendasutil.cpp
+    src/util/codigobarrasutil.cpp
     src/util/chaveacessoutil.cpp
     src/util/escposcomandos.cpp
 
@@ -301,6 +307,19 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/services/produtonota_service.h src/services/produtonota_service.cpp
         src/services/entradanfe_service.h src/services/entradanfe_service.cpp
         src/services/estoquenota_service.h src/services/estoquenota_service.cpp
+        src/dto/Operador_dto.h
+        src/repository/operador_repository.h src/repository/operador_repository.cpp
+        src/services/operador_service.h src/services/operador_service.cpp
+        src/dto/Caixa_dto.h
+        src/repository/caixa_repository.h src/repository/caixa_repository.cpp
+        src/services/caixa_service.h src/services/caixa_service.cpp
+        src/services/relatoriocaixa_service.h src/services/relatoriocaixa_service.cpp
+        src/aberturacaixa.h src/aberturacaixa.cpp src/aberturacaixa.ui
+        src/operadores.h src/operadores.cpp src/operadores.ui
+        src/movimentacaocaixa.h src/movimentacaocaixa.cpp src/movimentacaocaixa.ui
+        src/fechamentocaixa.h src/fechamentocaixa.cpp src/fechamentocaixa.ui
+        src/historicocaixas.h src/historicocaixas.cpp src/historicocaixas.ui
+        src/relatoriocaixajanela.h src/relatoriocaixajanela.cpp src/relatoriocaixajanela.ui
         src/dto/Cliente_dto.h
         src/repository/cliente_repository.h src/repository/cliente_repository.cpp
         src/services/cliente_service.h src/services/cliente_service.cpp

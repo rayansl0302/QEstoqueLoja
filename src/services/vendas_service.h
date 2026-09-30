@@ -14,6 +14,7 @@
 #include "Produto_service.h"
 #include "entradasvendas_service.h"
 #include "config_service.h"
+#include "caixa_service.h"
 
 
 enum class VendasErro {
@@ -55,7 +56,9 @@ public:
     VendasDTO getVenda(qlonglong id);
     ResumoVendasDTO calcularResumo(const QString &dataDe, const QString &dataAte, bool somentePrazo, qlonglong idCliente);
     Vendas_service::Resultado deletarVenda(qlonglong id);
-    Vendas_service::Resultado deletarVendaRegraNegocio(qlonglong idVenda, bool cancelarNf);
+    // motivoCancelamento é obrigatório quando a venda pertence a um caixa aberto
+    Vendas_service::Resultado deletarVendaRegraNegocio(qlonglong idVenda, bool cancelarNf,
+                                                       const QString &motivoCancelamento = QString());
     bool vendaPossuiNota(qlonglong idVenda);
     Vendas_service::Resultado updateNewTotalTrocoValorFinal(double total, double troco, double valorFinal, qlonglong id);
     Vendas_service::Resultado devolverProdutoRegraNegocio(qlonglong idProdVend, qlonglong idVenda);
@@ -73,6 +76,7 @@ private:
     EntradasVendas_service entradaServ;
     Config_service confServ;
     ConfigDTO confDTO;
+    Caixa_service caixaServ;
 
 signals:
 };

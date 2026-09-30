@@ -84,6 +84,9 @@ ConfigDTO Config_repository::loadAll()
 
     dto.impressoraNomeDispositivo = s.value("dispositivo/nome_impressora").toString();
 
+    dto.caixaToleranciaValor   = s.value("caixa/tolerancia_valor", 2.0).toDouble();
+    dto.caixaToleranciaPercent = s.value("caixa/tolerancia_percent", 0.5).toDouble();
+
     return dto;
 }
 
@@ -159,6 +162,9 @@ bool Config_repository::saveAll(const ConfigDTO &dto)
     s.setValue("database/path_pasta_postgre", dto.pathPastaPostgreDB);
 
     s.setValue("dispositivo/nome_impressora", dto.impressoraNomeDispositivo);
+
+    s.setValue("caixa/tolerancia_valor",   dto.caixaToleranciaValor);
+    s.setValue("caixa/tolerancia_percent", dto.caixaToleranciaPercent);
 
 
 

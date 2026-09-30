@@ -71,6 +71,7 @@ qlonglong inserirVendaTeste(qlonglong idProd)
 void TestProdutoVendaService::init()
 {
     db = DatabaseConnection_service::db();
+    TestDbFactory::garantirCaixaAberto();
 }
 
 void TestProdutoVendaService::cleanup()

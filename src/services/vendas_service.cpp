@@ -58,8 +58,16 @@ Vendas_service::Resultado Vendas_service::deletarVenda(qlonglong id){
 }
 
 Vendas_service::Resultado
-Vendas_service::deletarVendaRegraNegocio(qlonglong idVenda, bool cancelarNf)
+Vendas_service::deletarVendaRegraNegocio(qlonglong idVenda, bool cancelarNf,
+                                         const QString &motivoCancelamento)
 {
+        // venda de caixa fechado nao pode ser cancelada; de caixa aberto exige motivo
+        const VendasDTO vendaCancelada = getVenda(idVenda);
+        auto podeCancelar = caixaServ.validarCancelamento(vendaCancelada, motivoCancelamento);
+        if(!podeCancelar.ok){
+            return {false, VendasErro::QuebraDeRegra, podeCancelar.msg};
+        }
+
         if(cancelarNf){
             qlonglong idNf = notaServ.getIdFromIdVenda(idVenda);
             if(idNf != -1){
@@ -84,6 +92,11 @@ Vendas_service::deletarVendaRegraNegocio(qlonglong idVenda, bool cancelarNf)
             return {false, VendasErro::ProdutoVendido, result3.msg};
         }
 
+        auto estornoReceb = caixaServ.removerRecebimentosDaVenda(idVenda);
+        if(!estornoReceb.ok){
+            return {false, VendasErro::QuebraDeRegra, estornoReceb.msg};
+        }
+
         auto result4 = entradaServ.deletarPorIdVenda(idVenda);
         if(!result4.ok){
             return {false, VendasErro::EntradasVendas, result4.msg};
@@ -91,6 +104,11 @@ Vendas_service::deletarVendaRegraNegocio(qlonglong idVenda, bool cancelarNf)
         auto result5 = deletarVenda(idVenda);
         if(!result5.ok){
             return {false, VendasErro::DeleteFalhou, result5.msg};
+        }
+        if(vendaCancelada.idCaixa > 0){
+            auto reg = caixaServ.registrarCancelamento(vendaCancelada, motivoCancelamento);
+            if(!reg.ok)
+                qDebug() << "cancelamento nao registrado no caixa:" << reg.msg;
         }
         return {true, VendasErro::Nenhum, "Venda deletada com sucesso"};
 }
@@ -185,6 +203,14 @@ Vendas_service::ResultadoInsercaoRN Vendas_service::inserirVendaRegraDeNegocio(V
         // caso não seja maior ou igual que o total avalie como erro.
         return {false, VendasErro::QuebraDeRegra, "Valor Recebido deve ser maior que o valor final.", -1};
     }
+
+    // toda venda pertence ao caixa aberto neste terminal
+    auto caixa = caixaServ.exigirCaixaAberto();
+    if(!caixa.ok){
+        return {false, VendasErro::QuebraDeRegra, caixa.msg, -1};
+    }
+    venda.idCaixa = caixa.id;
+
     qlonglong idVenda = vendasRepo.inserir(venda);
     if(idVenda <= 0){
         return{false, VendasErro::InsercaoInvalida, "Erro ao inserir venda no banco de dados.", -1};

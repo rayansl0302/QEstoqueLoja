@@ -1532,6 +1532,148 @@ SchemaMigration_service::Resultado SchemaMigration_service::update() {
             emit dbVersao13();
             break;
         }
+        case 13:
+        {
+            // versao 14: fechamento de caixa por operador
+            if (!db.transaction()) {
+                qDebug() << "Error: unable to start transaction";
+                break;
+            }
+            qDebug() << "Atualizando para versao 14: operadores, caixas, movimentacoes e fechamentos.";
+            QSqlQuery query(db);
+            const bool pg = DatabaseConnection_service::isPostgres();
+            const QString pk = pg ? "SERIAL PRIMARY KEY" : "INTEGER PRIMARY KEY AUTOINCREMENT";
+            const QString ts = pg ? "TIMESTAMP" : "DATETIME";
+            const QString addCol = pg ? "ADD COLUMN IF NOT EXISTS" : "ADD COLUMN";
+
+            const QStringList comandos = {
+                "CREATE TABLE IF NOT EXISTS operadores ("
+                "  id " + pk + ","
+                "  nome TEXT NOT NULL,"
+                "  pin_hash TEXT NOT NULL,"
+                "  pin_salt TEXT NOT NULL,"
+                "  ativo BOOLEAN NOT NULL DEFAULT TRUE,"
+                "  tentativas_falhas INTEGER NOT NULL DEFAULT 0,"
+                "  bloqueado BOOLEAN NOT NULL DEFAULT FALSE,"
+                "  adicionado_em " + ts + ","
+                "  atualizado_em " + ts + ")",
+
+                "CREATE TABLE IF NOT EXISTS caixas ("
+                "  id " + pk + ","
+                "  id_operador INTEGER NOT NULL REFERENCES operadores(id),"
+                "  terminal TEXT NOT NULL,"
+                "  status TEXT NOT NULL DEFAULT 'ABERTO',"
+                "  aberto_em " + ts + " NOT NULL,"
+                "  fechado_em " + ts + ","
+                "  troco_inicial DECIMAL(10,2) NOT NULL DEFAULT 0,"
+                "  troco_sugerido DECIMAL(10,2) NOT NULL DEFAULT 0,"
+                "  observacao_fechamento TEXT,"
+                "  reaberto_por INTEGER,"
+                "  motivo_reabertura TEXT,"
+                "  reaberto_em " + ts + ")",
+
+                "CREATE TABLE IF NOT EXISTS movimentacoes_caixa ("
+                "  id " + pk + ","
+                "  id_caixa INTEGER NOT NULL REFERENCES caixas(id),"
+                "  tipo TEXT NOT NULL,"
+                "  valor DECIMAL(10,2) NOT NULL,"
+                "  forma_pagamento TEXT,"
+                "  motivo TEXT,"
+                "  id_venda INTEGER,"
+                "  id_entrada_venda INTEGER,"
+                "  id_operador INTEGER,"
+                "  estornado BOOLEAN NOT NULL DEFAULT FALSE,"
+                "  data_hora " + ts + " NOT NULL)",
+
+                "CREATE TABLE IF NOT EXISTS fechamentos_caixa ("
+                "  id " + pk + ","
+                "  id_caixa INTEGER NOT NULL REFERENCES caixas(id),"
+                "  forma_pagamento TEXT NOT NULL,"
+                "  valor_esperado DECIMAL(10,2) NOT NULL DEFAULT 0,"
+                "  valor_informado DECIMAL(10,2) NOT NULL DEFAULT 0,"
+                "  diferenca DECIMAL(10,2) NOT NULL DEFAULT 0,"
+                "  ocorrencia_tecnica BOOLEAN NOT NULL DEFAULT FALSE)",
+
+                "CREATE INDEX IF NOT EXISTS idx_caixas_status_terminal ON caixas(status, terminal)",
+                "CREATE INDEX IF NOT EXISTS idx_mov_caixa ON movimentacoes_caixa(id_caixa, tipo)",
+
+                // vendas antigas ficam com id_caixa NULL; o servico exige caixa aberto para novas vendas
+                "ALTER TABLE vendas2 " + addCol + " id_caixa INTEGER",
+                "ALTER TABLE entradas_vendas " + addCol + " id_caixa INTEGER",
+                "CREATE INDEX IF NOT EXISTS idx_vendas2_caixa ON vendas2(id_caixa)"
+            };
+
+            bool ok = true;
+            for (const QString &sql : comandos) {
+                if (query.exec(sql))
+                    continue;
+                // SQLite nao tem ADD COLUMN IF NOT EXISTS: coluna ja existente nao e erro
+                if (!pg && sql.startsWith("ALTER TABLE") &&
+                    query.lastError().text().contains("duplicate column", Qt::CaseInsensitive))
+                    continue;
+                qDebug() << "Erro migracao 14:" << sql << query.lastError().text();
+                ok = false;
+                break;
+            }
+            if (!ok) {
+                db.rollback();
+                return {false, SchemaErro::ErroMigracao, "Erro na migracao 14 (caixa)", dbSchemaVersion};
+            }
+            if (!setSchemaVersion(14)) {
+                qDebug() << "Erro ao atualizar user_version para 14:" << query.lastError().text();
+                db.rollback();
+                return {false, SchemaErro::ErroMigracao, "Erro ao gravar versao 14", dbSchemaVersion};
+            }
+            if (!db.commit()) {
+                qDebug() << "Erro ao dar commit:" << db.lastError().text();
+                db.rollback();
+                return {false, SchemaErro::ErroMigracao, "Erro ao confirmar migracao 14", dbSchemaVersion};
+            }
+            dbSchemaVersion = 14;
+            qDebug() << "Migracao para versao 14 concluida.";
+            break;
+        }
+        case 14:
+        {
+            // versao 15: PIN do gerente (configuracao compartilhada entre os terminais)
+            // e travas no banco: nao pode haver dois caixas abertos no mesmo terminal nem do mesmo operador
+            if (!db.transaction()) {
+                qDebug() << "Error: unable to start transaction";
+                break;
+            }
+            qDebug() << "Atualizando para versao 15: config_caixa e indices unicos de caixa aberto.";
+            QSqlQuery query(db);
+            if (!query.exec("CREATE TABLE IF NOT EXISTS config_caixa (chave TEXT PRIMARY KEY, valor TEXT)")) {
+                qDebug() << "Erro migracao 15:" << query.lastError().text();
+                db.rollback();
+                return {false, SchemaErro::ErroMigracao, "Erro na migracao 15 (caixa)", dbSchemaVersion};
+            }
+            if (!setSchemaVersion(15)) {
+                qDebug() << "Erro ao atualizar user_version para 15:" << query.lastError().text();
+                db.rollback();
+                return {false, SchemaErro::ErroMigracao, "Erro ao gravar versao 15", dbSchemaVersion};
+            }
+            if (!db.commit()) {
+                qDebug() << "Erro ao dar commit:" << db.lastError().text();
+                db.rollback();
+                return {false, SchemaErro::ErroMigracao, "Erro ao confirmar migracao 15", dbSchemaVersion};
+            }
+            dbSchemaVersion = 15;
+
+            // fora da transacao: se ja existir duplicidade (dados antigos) o indice nao e criado,
+            // o que nao impede o sistema de abrir; o servico continua conferindo a regra
+            const QStringList indices = {
+                "CREATE UNIQUE INDEX IF NOT EXISTS ux_caixas_aberto_terminal ON caixas(terminal) WHERE status = 'ABERTO'",
+                "CREATE UNIQUE INDEX IF NOT EXISTS ux_caixas_aberto_operador ON caixas(id_operador) WHERE status = 'ABERTO'"
+            };
+            for (const QString &sql : indices) {
+                QSqlQuery idx(db);
+                if (!idx.exec(sql))
+                    qDebug() << "Indice de caixa aberto nao criado:" << idx.lastError().text();
+            }
+            qDebug() << "Migracao para versao 15 concluida.";
+            break;
+        }
 
         }
     }

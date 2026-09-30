@@ -5,6 +5,8 @@
 #include <QDate>
 #include <QtSql>
 #include <QMessageBox>
+#include <QInputDialog>
+#include "aberturacaixa.h"
 #include <QMenu>
 #include <QPrintDialog>
 #include <QPrinter>
@@ -117,6 +119,8 @@ Vendas::~Vendas()
 
 void Vendas::on_Btn_InserirVenda_clicked()
 {
+    if (!AberturaCaixa::garantirCaixaAberto(this))
+        return;
     venda *inserirVenda = new venda;
     //inserirVenda->setWindowModality(Qt::ApplicationModal);
     connect(inserirVenda, &venda::vendaConcluida, this, &Vendas::vendaConcluidaVendas);
@@ -221,7 +225,23 @@ void Vendas::deletarVenda(bool cancelarNf){
         cancelarNf = (respostaNf == QMessageBox::Yes);
     }
 
-    auto result = vendaServ.deletarVendaRegraNegocio(idVenda.toLongLong(), cancelarNf);
+    // venda vinculada a um caixa: o cancelamento entra no relatório de fechamento com motivo
+    QString motivoCancelamento;
+    if(vendaServ.getVenda(idVenda.toLongLong()).idCaixa > 0){
+        bool okMotivo = false;
+        motivoCancelamento = QInputDialog::getMultiLineText(
+            this, "Motivo do cancelamento",
+            "Descreva o motivo do cancelamento desta venda (obrigatório):",
+            QString(), &okMotivo).trimmed();
+        if(!okMotivo)
+            return;
+        if(motivoCancelamento.isEmpty()){
+            QMessageBox::warning(this, "Cancelamento", "Informe o motivo do cancelamento.");
+            return;
+        }
+    }
+
+    auto result = vendaServ.deletarVendaRegraNegocio(idVenda.toLongLong(), cancelarNf, motivoCancelamento);
 
     if(!result.ok){
         QMessageBox::warning(this, "Erro", result.msg);

@@ -1,5 +1,8 @@
 #include "pagamentoaprazo.h"
 #include "vendas.h"
+#include "services/caixa_service.h"
+#include <QMessageBox>
+#include <QSqlError>
 
 pagamentoAPrazo::pagamentoAPrazo(QString id_venda, QString total, QString cliente, QString data, QWidget *parent)
     : pagamento(total, cliente, data, parent)
@@ -100,8 +103,17 @@ void pagamentoAPrazo::terminarPagamento()
         return;
     }
 
-    query.prepare("INSERT INTO entradas_vendas (id_venda, total, data_hora, forma_pagamento, valor_recebido, troco, taxa, valor_final, desconto) VALUES (:valor1, :valor2, :valor3, :valor4, :valor5, :valor6, :valor7, :valor8, :valor9)");
+    // recebimento entra no caixa aberto deste terminal como movimentação RECEBIMENTO
+    Caixa_service caixaServ;
+    auto caixaAberto = caixaServ.exigirCaixaAberto();
+    if(!caixaAberto.ok){
+        QMessageBox::warning(this, "Caixa", caixaAberto.msg);
+        return;
+    }
+
+    query.prepare("INSERT INTO entradas_vendas (id_venda, total, data_hora, forma_pagamento, valor_recebido, troco, taxa, valor_final, desconto, id_caixa) VALUES (:valor1, :valor2, :valor3, :valor4, :valor5, :valor6, :valor7, :valor8, :valor9, :idcaixa)");
     query.bindValue(":valor1", idVenda);
+    query.bindValue(":idcaixa", caixaAberto.id);
     // precisa converter para notacao usa para inserir no banco de dados
     query.bindValue(":valor2", QString::number(portugues.toFloat(totalGlobal)));
     // inserir a data do dateedit
@@ -116,8 +128,23 @@ void pagamentoAPrazo::terminarPagamento()
     query.bindValue(":valor9", QString::number(portugues.toFloat(desconto), 'f', 2));
     if (query.exec()) {
         qDebug() << "Inserção bem-sucedida!";
+        const qlonglong idEntrada = query.lastInsertId().toLongLong();
+        auto reg = caixaServ.registrarRecebimento(idVenda.toLongLong(), idEntrada,
+                                                  forma_pagamento, portugues.toDouble(valor_final));
+        if(!reg.ok) {
+            QSqlQuery desfazer(db);
+            desfazer.prepare("DELETE FROM entradas_vendas WHERE id = :id");
+            desfazer.bindValue(":id", idEntrada);
+            desfazer.exec();
+            QMessageBox::warning(this, "Caixa", reg.msg);
+            db.close();
+            return;
+        }
     } else {
-        qDebug() << "Erro na inserção: ";
+        qDebug() << "Erro na inserção: " << query.lastError().text();
+        QMessageBox::warning(this, "Erro", "Não foi possível registrar o recebimento:\n" + query.lastError().text());
+        db.close();
+        return;
     }
     // inserir os produtos da venda
 

@@ -121,11 +121,13 @@ VendasDTO Vendas_repository::getVenda(qlonglong id){
 
     QSqlQuery query(db);
     query.prepare("SELECT cliente, data_hora, total, forma_pagamento, valor_recebido, troco, "
-                  "taxa, valor_final, desconto, esta_pago, id_cliente FROM vendas2 "
+                  "taxa, valor_final, desconto, esta_pago, id_cliente, id_caixa FROM vendas2 "
                   "WHERE id = :id_venda");
     query.bindValue(":id_venda", id);
     if(query.exec()){
         while (query.next()) {
+            result.id = id;
+            result.idCaixa = query.value("id_caixa").toLongLong();
             result.clienteNome = query.value("cliente").toString();
             result.dataHora = query.value("data_hora").toString();
             result.total = query.value("total").toDouble();
@@ -341,9 +343,9 @@ qlonglong Vendas_repository::inserir(VendasDTO venda){
 
     QSqlQuery query(db);
     query.prepare("INSERT INTO vendas2 (cliente, total, data_hora, forma_pagamento, "
-                  "valor_recebido, troco, taxa, valor_final, desconto, id_cliente, esta_pago) "
+                  "valor_recebido, troco, taxa, valor_final, desconto, id_cliente, esta_pago, id_caixa) "
                   "VALUES (:cliente, :total, :datahora, :formapag, :recebido, :troco, :taxa, "
-                  ":valorfinal, :desconto, :idcliente, :estapago)");
+                  ":valorfinal, :desconto, :idcliente, :estapago, :idcaixa)");
 
     query.bindValue(":cliente", venda.clienteNome);
     query.bindValue(":total", venda.total);
@@ -356,9 +358,11 @@ qlonglong Vendas_repository::inserir(VendasDTO venda){
     query.bindValue(":desconto", venda.desconto);
     query.bindValue(":idcliente", venda.idCliente);
     query.bindValue(":estapago", venda.estaPago);
+    query.bindValue(":idcaixa", venda.idCaixa > 0 ? QVariant(venda.idCaixa)
+                                                  : QVariant(QMetaType(QMetaType::LongLong)));
 
     if(!query.exec()){
-        qDebug() << "Query não executou inserir venda()";
+        qDebug() << "Query não executou inserir venda()" << query.lastError().text();
         return -1;
     }
 

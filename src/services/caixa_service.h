@@ -1,0 +1,67 @@
+#ifndef CAIXA_SERVICE_H
+#define CAIXA_SERVICE_H
+
+#include <QObject>
+#include <QSqlQueryModel>
+#include <QMap>
+#include <QStringList>
+#include "../repository/caixa_repository.h"
+#include "../dto/Vendas_dto.h"
+#include "operador_service.h"
+#include "config_service.h"
+
+// Regras do turno de caixa: abertura com PIN, movimentações, vínculo das vendas,
+// cálculo do valor esperado por forma de pagamento e fechamento com tolerância.
+class Caixa_service : public QObject
+{
+    Q_OBJECT
+public:
+    struct Resultado {
+        bool ok;
+        QString msg;
+        qlonglong id = 0;
+    };
+
+    static const QStringList FormasCaixa;   // Dinheiro, Crédito, Débito, Pix
+    static QString terminalAtual();
+
+    explicit Caixa_service(QObject *parent = nullptr);
+
+    CaixaDTO caixaAbertoNoTerminal();
+    CaixaDTO getCaixa(qlonglong id);
+    double sugerirTrocoInicial();
+
+    Resultado abrirCaixa(qlonglong idOperador, const QString &pin, double trocoInicial, double trocoSugerido);
+    Resultado registrarSangria(double valor, const QString &motivo);
+    Resultado registrarSuprimento(double valor, const QString &motivo);
+
+    // Chamados pelos fluxos de venda
+    Resultado exigirCaixaAberto();
+    Resultado registrarRecebimento(qlonglong idVenda, qlonglong idEntradaVenda,
+                                   const QString &forma, double valor);
+    // Confere (sem apagar) se o recebimento ainda pode ser excluído: o caixa dele precisa estar aberto.
+    Resultado podeRemoverRecebimento(qlonglong idEntradaVenda);
+    Resultado removerRecebimento(qlonglong idEntradaVenda);
+    Resultado removerRecebimentosDaVenda(qlonglong idVenda);
+    Resultado validarCancelamento(const VendasDTO &venda, const QString &motivo);
+    Resultado registrarCancelamento(const VendasDTO &venda, const QString &motivo);
+
+    // Fechamento
+    ResumoCaixaDTO resumo(qlonglong idCaixa);
+    bool dentroDaTolerancia(double diferenca, double esperado) const;
+    QString descricaoTolerancia() const;
+    Resultado fecharCaixa(qlonglong idCaixa, const QString &pin, const QMap<QString, double> &informados,
+                          const QString &observacao);
+
+    void listarHistorico(QSqlQueryModel *model, const QString &de = QString(), const QString &ate = QString());
+
+private:
+    Caixa_repository repo;
+    Operador_service operadorServ;
+    Config_service confServ;
+    ConfigDTO cfg;
+
+    Resultado registrarMovimentacaoSimples(const QString &tipo, double valor, const QString &motivo);
+};
+
+#endif // CAIXA_SERVICE_H

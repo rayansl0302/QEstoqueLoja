@@ -86,6 +86,10 @@ struct ConfigDTO {
     QString pathPastaPostgreDB;
 
     QString impressoraNomeDispositivo;
+
+    // Caixa: diferença no fechamento até este valor OU esta porcentagem do esperado não exige justificativa
+    double caixaToleranciaValor = 2.0;
+    double caixaToleranciaPercent = 0.5;
 };
 
 #endif // CONFIG_DTO_H

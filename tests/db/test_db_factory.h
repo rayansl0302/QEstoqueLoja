@@ -10,6 +10,7 @@ public:
     // static QSqlDatabase createPostgres();
     static QSqlDatabase createPostgres();
     static void removerBDAtual();
+    static void garantirCaixaAberto();
 private:
     static QString currentConnectionName;
     static QString currentDatabaseName;

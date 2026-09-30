@@ -3,6 +3,8 @@
 #include <QDir>
 #include "infra/databaseconnection_service.h"
 #include "services/schemamigration_service.h"
+#include "services/caixa_service.h"
+#include "services/operador_service.h"
 #include <QProcess>
 #include <QSqlQuery>
 #include <QUuid>
@@ -33,7 +35,7 @@ QSqlDatabase TestDbFactory::create()
     DatabaseConnection_service::setDatabase(db);
 
     // roda migration
-    SchemaMigration_service schema(nullptr, 12);
+    SchemaMigration_service schema(nullptr, 15);
     auto result = schema.update();
 
     if (!result.ok) {
@@ -133,7 +135,7 @@ QSqlDatabase TestDbFactory::createPostgres()
     DatabaseConnection_service::setDatabase(db);
 
 
-    SchemaMigration_service schema(nullptr, 12);
+    SchemaMigration_service schema(nullptr, 15);
 
     auto result = schema.update();
 
@@ -198,4 +200,33 @@ void TestDbFactory::removerBDAtual(){
     }
 
     currentConnectionName = "";
+}
+
+void TestDbFactory::garantirCaixaAberto()
+{
+    Caixa_service cs;
+    if (cs.caixaAbertoNoTerminal().aberto())
+        return;
+
+    // operador próprio dos testes (PIN 1234): o primeiro da lista poderia estar bloqueado por outro teste
+    Operador_service os;
+    qlonglong idOp = 0;
+    for (const OperadorDTO &op : os.listar(true)) {
+        if (op.nome == QStringLiteral("Operador Teste") && !op.bloqueado) {
+            idOp = op.id;
+            break;
+        }
+    }
+    if (idOp == 0) {
+        const QString nome = QStringLiteral("Operador Teste") +
+                             (os.listar(false).isEmpty() ? QString() : QStringLiteral(" ") + QUuid::createUuid().toString(QUuid::WithoutBraces).left(6));
+        const auto cad = os.cadastrar(nome, QStringLiteral("1234"));
+        if (!cad.ok)
+            qFatal("Falha ao cadastrar operador de teste: %s", qPrintable(cad.msg));
+        idOp = cad.id;
+    }
+
+    const auto aberto = cs.abrirCaixa(idOp, QStringLiteral("1234"), 0, 0);
+    if (!aberto.ok)
+        qFatal("Falha ao abrir caixa de teste: %s", qPrintable(aberto.msg));
 }

@@ -6,6 +6,8 @@
     #include <qicon.h>
     #include <QStyleFactory>
     #include <QGuiApplication>
+    #include <QTimer>
+    #include <QMetaObject>
 
     int main(int argc, char *argv[])
     {
@@ -50,7 +52,23 @@
         MainWindow w;
         w.show();
         // atalho da Área de Trabalho: QEstoqueLoja --pdv abre direto a tela de venda
-        if (QCoreApplication::arguments().contains("--pdv"))
+        const QStringList args = QCoreApplication::arguments();
+        if (args.contains("--pdv"))
             w.abrirPdv();
+
+        const int prev = args.indexOf("--preview-caixa");
+        if (prev >= 0 && prev + 1 < args.size()) {
+            const QString tela = args.at(prev + 1);
+            QTimer::singleShot(800, &w, [tela, &w]() {
+                const char *slot = nullptr;
+                if (tela == "operadores") slot = "operadoresClicked";
+                else if (tela == "abrir") slot = "abrirCaixaClicked";
+                else if (tela == "fechar") slot = "fecharCaixaClicked";
+                else if (tela == "historico") slot = "historicoCaixaClicked";
+                else if (tela == "sangria") slot = "sangriaClicked";
+                if (slot)
+                    QMetaObject::invokeMethod(&w, slot);
+            });
+        }
         return a.exec();
     }

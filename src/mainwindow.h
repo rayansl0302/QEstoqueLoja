@@ -18,6 +18,7 @@
 #include <QRandomGenerator>
 #include <QKeyEvent>
 #include <QPointer>
+#include <QLabel>
 #include "configuracao.h"
 #include "subclass/customlineedit.h"
 #include "nota/acbrmanager.h"
@@ -110,6 +111,13 @@ private slots:
 
     void on_actionSQLite_triggered();
 
+    void abrirCaixaClicked();
+    void fecharCaixaClicked();
+    void sangriaClicked();
+    void suprimentoClicked();
+    void historicoCaixaClicked();
+    void operadoresClicked();
+
 private:
     Ui::MainWindow *ui;
     // ACBrNFe *acbr;
@@ -133,13 +141,17 @@ private:
     void setarIconesJanela();
     //QModelIndex selected_index;
 
-    const int ultimaVersaoSchema = 13;
+    const int ultimaVersaoSchema = 15;
 
 
     void mostrarProdutoPorCodigoBarras(const QString &codigo);
     void imprimirNomePreco(int quantidade);
     void iniciarMigration();
     void atualizarConfigDTO();
+    void montarMenuCaixa();
+    void atualizarIndicadorCaixa();
+    bool garantirCaixaAberto();
+    QLabel *lblCaixaStatus = nullptr;
 protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
     QString getIdProdSelected();

@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>FechamentoCaixa</class>
+ <widget class="QDialog" name="FechamentoCaixa">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>640</width>
+    <height>560</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Fechar caixa</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QLabel#Lbl_Titulo { font: 700 14pt &quot;Ubuntu&quot;; color: rgb(30, 41, 59); }
+QLabel#Lbl_Cabecalho, QLabel#Lbl_Tolerancia { color: rgb(100, 116, 139); }
+QLineEdit { min-height: 30px; }
+QPushButton { min-height: 36px; padding: 0 16px; }
+QPushButton#Btn_Fechar { background-color: rgb(43, 132, 191); color: white; border-radius: 6px; }
+QPushButton#Btn_Fechar:hover { background-color: rgb(13, 92, 161); }
+QPushButton#Btn_Fechar:disabled { background-color: rgb(190, 200, 212); }</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>18</number>
+   </property>
+   <property name="topMargin">
+    <number>16</number>
+   </property>
+   <property name="rightMargin">
+    <number>18</number>
+   </property>
+   <property name="bottomMargin">
+    <number>16</number>
+   </property>
+   <item>
+    <widget class="QLabel" name="Lbl_Titulo">
+     <property name="text">
+      <string>Fechamento de caixa</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="Lbl_Cabecalho">
+     <property name="text">
+      <string>Caixa</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="Lbl_Tolerancia">
+     <property name="text">
+      <string>Tolerância</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QGridLayout" name="gridFormas">
+     <item row="0" column="0">
+      <widget class="QLabel" name="Lbl_HForma">
+       <property name="text">
+        <string>Forma</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLabel" name="Lbl_HEsp">
+       <property name="text">
+        <string>Esperado</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QLabel" name="Lbl_HInf">
+       <property name="text">
+        <string>Contado</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="3">
+      <widget class="QLabel" name="Lbl_HDif">
+       <property name="text">
+        <string>Diferença</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="Lbl_NDinheiro">
+       <property name="text">
+        <string>Dinheiro</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLabel" name="Lbl_EspDinheiro">
+       <property name="text">
+        <string>0,00</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QLineEdit" name="Ledit_Dinheiro"/>
+     </item>
+     <item row="1" column="3">
+      <widget class="QLabel" name="Lbl_DifDinheiro">
+       <property name="text">
+        <string>0,00</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="Lbl_NCredito">
+       <property name="text">
+        <string>Crédito</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLabel" name="Lbl_EspCredito">
+       <property name="text">
+        <string>0,00</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="2">
+      <widget class="QLineEdit" name="Ledit_Credito"/>
+     </item>
+     <item row="2" column="3">
+      <widget class="QLabel" name="Lbl_DifCredito">
+       <property name="text">
+        <string>0,00</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="Lbl_NDebito">
+       <property name="text">
+        <string>Débito</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QLabel" name="Lbl_EspDebito">
+       <property name="text">
+        <string>0,00</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="2">
+      <widget class="QLineEdit" name="Ledit_Debito"/>
+     </item>
+     <item row="3" column="3">
+      <widget class="QLabel" name="Lbl_DifDebito">
+       <property name="text">
+        <string>0,00</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="Lbl_NPix">
+       <property name="text">
+        <string>Pix</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="QLabel" name="Lbl_EspPix">
+       <property name="text">
+        <string>0,00</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="2">
+      <widget class="QLineEdit" name="Ledit_Pix"/>
+     </item>
+     <item row="4" column="3">
+      <widget class="QLabel" name="Lbl_DifPix">
+       <property name="text">
+        <string>0,00</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="Lbl_Obs">
+     <property name="text">
+      <string>Observação / justificativa (obrigatória se a diferença passar da tolerância):</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPlainTextEdit" name="PTEdit_Obs">
+     <property name="placeholderText">
+      <string>Ex.: nota de R$ 50 rasgada, diferença na maquininha, troco errado...</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="hlPin">
+     <item>
+      <widget class="QLabel" name="Lbl_Pin">
+       <property name="text">
+        <string>PIN do operador:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="Ledit_Pin">
+       <property name="maxLength">
+        <number>6</number>
+       </property>
+       <property name="echoMode">
+        <enum>QLineEdit::EchoMode::Password</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="spPin">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="hlBotoes">
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="Btn_Cancelar">
+       <property name="text">
+        <string>Cancelar</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="Btn_Fechar">
+       <property name="text">
+        <string>Fechar caixa</string>
+       </property>
+       <property name="default">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

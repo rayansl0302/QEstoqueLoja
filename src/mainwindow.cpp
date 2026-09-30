@@ -51,6 +51,13 @@
 #include "cartacorrecaojanela.h"
 #include "services/export_service.h"
 #include "services/escposprinter_service.h"
+#include "services/caixa_service.h"
+#include "aberturacaixa.h"
+#include "fechamentocaixa.h"
+#include "movimentacaocaixa.h"
+#include "historicocaixas.h"
+#include "operadores.h"
+#include <QTimer>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -154,6 +161,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(ui->Tview_Produtos, &QTableView::doubleClicked,
             this, &MainWindow::verProd);
+
+    montarMenuCaixa();
+    atualizarIndicadorCaixa();
 
     // ManifestadorDFe *manifestdfe = new ManifestadorDFe();
     // manifestdfe->consultarSePossivel();
@@ -426,9 +436,111 @@ void MainWindow::on_Btn_PDV_clicked()
     abrirPdv();
 }
 
+void MainWindow::montarMenuCaixa()
+{
+    QMenu *menuCaixa = new QMenu("Caixa", this);
+    menuCaixa->addAction("Abrir caixa...", this, &MainWindow::abrirCaixaClicked);
+    menuCaixa->addAction("Fechar caixa...", this, &MainWindow::fecharCaixaClicked);
+    menuCaixa->addSeparator();
+    menuCaixa->addAction("Sangria...", this, &MainWindow::sangriaClicked);
+    menuCaixa->addAction("Suprimento...", this, &MainWindow::suprimentoClicked);
+    menuCaixa->addSeparator();
+    menuCaixa->addAction("Histórico...", this, &MainWindow::historicoCaixaClicked);
+    menuCaixa->addAction("Operadores...", this, &MainWindow::operadoresClicked);
+    menuCaixa->addAction("PIN do gerente...", this, [this]() { Operadores::alterarPinGerente(this); });
+    ui->menuBar->insertMenu(ui->menuAjuda->menuAction(), menuCaixa);
+
+    lblCaixaStatus = new QLabel(this);
+    ui->statusbar->addPermanentWidget(lblCaixaStatus);
+
+    // o caixa pode ser aberto/fechado por outra tela ou por outro computador: mantém o rodapé em dia
+    QTimer *timerCaixa = new QTimer(this);
+    connect(timerCaixa, &QTimer::timeout, this, &MainWindow::atualizarIndicadorCaixa);
+    timerCaixa->start(15000);
+}
+
+void MainWindow::atualizarIndicadorCaixa()
+{
+    if (!lblCaixaStatus)
+        return;
+    Caixa_service caixaServ;
+    const CaixaDTO caixa = caixaServ.caixaAbertoNoTerminal();
+    if (caixa.aberto()) {
+        lblCaixaStatus->setText(QString(" Caixa aberto · %1 · #%2 ").arg(caixa.nomeOperador).arg(caixa.id));
+        lblCaixaStatus->setStyleSheet("color: rgb(21, 128, 61); font-weight: 600;");
+    } else {
+        lblCaixaStatus->setText(" Caixa fechado ");
+        lblCaixaStatus->setStyleSheet("color: rgb(185, 28, 28); font-weight: 600;");
+    }
+}
+
+bool MainWindow::garantirCaixaAberto()
+{
+    const bool ok = AberturaCaixa::garantirCaixaAberto(this);
+    atualizarIndicadorCaixa();
+    return ok;
+}
+
+void MainWindow::abrirCaixaClicked()
+{
+    Caixa_service caixaServ;
+    if (caixaServ.caixaAbertoNoTerminal().aberto()) {
+        QMessageBox::information(this, "Caixa", "Já existe um caixa aberto neste terminal.");
+        return;
+    }
+    AberturaCaixa dlg(this);
+    if (dlg.exec() == QDialog::Accepted)
+        atualizarIndicadorCaixa();
+}
+
+void MainWindow::fecharCaixaClicked()
+{
+    Caixa_service caixaServ;
+    if (!caixaServ.caixaAbertoNoTerminal().aberto()) {
+        QMessageBox::information(this, "Caixa", "Nenhum caixa aberto neste terminal.");
+        return;
+    }
+    FechamentoCaixa dlg(this);
+    dlg.exec();
+    atualizarIndicadorCaixa();
+}
+
+void MainWindow::sangriaClicked()
+{
+    if (!garantirCaixaAberto())
+        return;
+    MovimentacaoCaixa dlg(MovimentacaoCaixa::Tipo::Sangria, this);
+    dlg.exec();
+}
+
+void MainWindow::suprimentoClicked()
+{
+    if (!garantirCaixaAberto())
+        return;
+    MovimentacaoCaixa dlg(MovimentacaoCaixa::Tipo::Suprimento, this);
+    dlg.exec();
+}
+
+void MainWindow::historicoCaixaClicked()
+{
+    HistoricoCaixas dlg(this);
+    dlg.exec();
+}
+
+void MainWindow::operadoresClicked()
+{
+    if (!Operadores::autenticarGerente(this))
+        return;
+    Operadores dlg(this);
+    dlg.exec();
+}
+
 // Abre direto a tela de venda (maximizada). Se já estiver aberta, apenas a traz para frente.
 void MainWindow::abrirPdv()
 {
+    if (!garantirCaixaAberto())
+        return;
+
     if (pdvAberto) {
         pdvAberto->showMaximized();
         pdvAberto->raise();
