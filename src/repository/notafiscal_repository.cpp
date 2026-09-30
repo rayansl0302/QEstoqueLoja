@@ -32,7 +32,7 @@ bool notafiscal_repository::salvarResNFe(NotaFiscalDTO resumoNota, QString *erro
                   ":saida, :nnf, :serie, :dhemi, :adicionadoem)");
     query.bindValue(":cstat", resumoNota.cstat);
     query.bindValue(":modelo", "55");
-    query.bindValue(":tpamb", resumoNota.tpAmb);
+    query.bindValue(":tpamb", resumoNota.tpAmb != 0);
     query.bindValue(":xmlpath", resumoNota.xmlPath);
     query.bindValue(":vnf", resumoNota.valorTotal);
     query.bindValue(":atualizadoem", dataFormatada);
@@ -41,7 +41,7 @@ bool notafiscal_repository::salvarResNFe(NotaFiscalDTO resumoNota, QString *erro
     query.bindValue(":nprot", resumoNota.nProt);
     query.bindValue(":cuf", resumoNota.cuf);
     query.bindValue(":finalidade", resumoNota.finalidade);
-    query.bindValue(":saida", 0);
+    query.bindValue(":saida", false);
     query.bindValue(":nnf", resumoNota.nnf);
     query.bindValue(":serie", QString::number(resumoNota.serie));
     query.bindValue(":dhemi", dhemiFormatada);
@@ -115,9 +115,9 @@ bool notafiscal_repository::updateWhereChave(NotaFiscalDTO dto, QString chave, Q
               "WHERE chnfe = :chnfe");
     q.bindValue(":cstat", dto.cstat);
     q.bindValue(":nnf", dto.nnf);
-    q.bindValue(":serie", dto.serie);
+    q.bindValue(":serie", QString::number(dto.serie));
     q.bindValue(":modelo", dto.modelo);
-    q.bindValue(":tp_amb", dto.tpAmb);
+    q.bindValue(":tp_amb", dto.tpAmb != 0);
     q.bindValue(":xml_path", dto.xmlPath);
     q.bindValue(":valor_total", dto.valorTotal);
     q.bindValue(":cnpjemit", dto.cnpjEmit);
@@ -126,7 +126,7 @@ bool notafiscal_repository::updateWhereChave(NotaFiscalDTO dto, QString chave, Q
     q.bindValue(":chnfe", chave);
     q.bindValue(":atualizadoem", dataAgoraFormatada);
     q.bindValue(":finalidade", "ENTRADA EXTERNA");
-    q.bindValue(":saida", 0);
+    q.bindValue(":saida", false);
     if (dto.idEmissorCliente <= 0)
         q.bindValue(":idcliente", QVariant());
     else
