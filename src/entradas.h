@@ -13,6 +13,7 @@
 #include "services/fiscalemitter_service.h"
 #include "services/cliente_service.h"
 #include "services/entradanfe_service.h"
+#include "services/estoquenota_service.h"
 
 struct Cliente{
     QString nome;
@@ -60,6 +61,10 @@ private slots:
     void on_Btn_ImportarXml_clicked();
     void on_Ledit_ChaveAcesso_returnPressed();
     void on_Ledit_ChaveAcesso_textChanged(const QString &texto);
+    void on_Btn_AdicionarEstoque_clicked();
+    void on_Btn_AdicionarTodos_clicked();
+    void on_Btn_Devolucao_clicked();
+    void on_Btn_VerDanfe_clicked();
 
 private:
     Ui::Entradas *ui;
@@ -68,7 +73,7 @@ private:
     QMap<QString, QString> financeiroValues;
     QMap<QString, QString> produtoValues;
     QLocale portugues;
-    qlonglong id_nf_selec;
+    qlonglong id_nf_selec = 0;
     QSqlQueryModel *modelEntradas;
     QSqlQueryModel *modelProdutosNota;
     ConfigDTO configDTO;
@@ -79,6 +84,7 @@ private:
     FiscalEmitter_service fiscalEmitterServ;
     Cliente_service clienteServ;
     EntradaNfe_service entradaNfeServ;
+    EstoqueNota_service estoqueNotaServ;
     bool emBusca = false;
     QString ultimaPastaXml;
 
@@ -96,6 +102,11 @@ private:
     void buscarChave();
     void selecionarNotaPorId(qlonglong idNota);
     void definirBuscando(bool buscando);
+    QList<ProdutoNotaDTO> produtosNotaSelecionados(bool *algumDevolvido = nullptr);
+    void adicionarSelecionadoAoEstoque();
+    void devolverSelecionados();
+    void atualizarResumoItens();
+    void atualizarBotoesAcao();
 
 signals:
     void produtoAdicionado();

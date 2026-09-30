@@ -377,6 +377,26 @@ ProdutoDTO Produto_Repository::getProdutoPeloCodBarras(const QString &codigo){
     return prod;
 }
 
+ProdutoDTO Produto_Repository::getProdutoPelaDescricao(const QString &descricao){
+    ProdutoDTO prod;
+    prod.id = 0;
+    if(!DatabaseConnection_service::open()){
+        qDebug() << "db nao aberto ao getProdutoPelaDescricao";
+        return prod;
+    }
+    QSqlQuery query(db);
+    query.prepare("SELECT codigo_barras FROM produtos WHERE UPPER(TRIM(descricao)) = UPPER(TRIM(:desc)) "
+                  "ORDER BY id LIMIT 1");
+    query.bindValue(":desc", descricao);
+    if(!query.exec()){
+        qDebug() << "Query não executou getProdutoPelaDescricao" << query.lastError().text();
+        return prod;
+    }
+    if(!query.next())
+        return prod;
+    return getProdutoPeloCodBarras(query.value(0).toString());
+}
+
 bool Produto_Repository::updateDiminuirQuantidadeProduto(qlonglong idprod, double quantia){
     if(!DatabaseConnection_service::open()){
         qDebug() << "db nao aberto ao updateDiminuirQuantidadeProduto";

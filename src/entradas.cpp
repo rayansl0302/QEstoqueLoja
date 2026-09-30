@@ -34,6 +34,7 @@
 #include <QFileInfo>
 #include <QTimer>
 #include <QApplication>
+#include "nota/DanfeUtil.h"
 
 Entradas::Entradas(QWidget *parent)
     : QWidget(parent)
@@ -62,9 +63,21 @@ Entradas::Entradas(QWidget *parent)
     ui->DateEdt_De->setDate(primeiroDia);
     ui->DateEdt_Ate->setDate(ultimoDia);
 
+    connect(ui->Tview_ProdutosNota->selectionModel(),
+            &QItemSelectionModel::selectionChanged,
+            this,
+            [this]() { atualizarBotoesAcao(); });
+    connect(modelEntradas, &QSqlQueryModel::modelReset, this, [this]() {
+        ui->Lbl_QtdNotas->setText(modelEntradas->rowCount() == 0
+                                      ? "Nenhuma nota no período"
+                                      : QString("%1 nota(s)").arg(modelEntradas->rowCount()));
+    });
+
     ui->Tview_Entradas->selectRow(0);
 
     atualizarStatusBusca();
+    atualizarResumoItens();
+    atualizarBotoesAcao();
 }
 
 Entradas::~Entradas()
@@ -103,6 +116,8 @@ void Entradas::on_Btn_ConsultarDF_clicked()
 void Entradas::atualizarTabela(const QString &de, const QString &ate)
 {
     notaServ.listarEntradas(modelEntradas, de, ate);
+    ui->Tview_Entradas->resizeColumnsToContents();
+    ui->Tview_Entradas->setColumnWidth(5, 200);
     ui->Tview_Entradas->selectRow(0);
 }
 
@@ -122,7 +137,8 @@ void Entradas::carregarTabela()
 
     ui->Tview_Entradas->setModel(modelEntradas);
     ui->Tview_Entradas->resizeColumnsToContents();
-    ui->Tview_Entradas->horizontalHeader()->setStretchLastSection(true);
+    ui->Tview_Entradas->horizontalHeader()->setStretchLastSection(false);
+    ui->Tview_Entradas->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
     ui->Tview_Entradas->setColumnHidden(7, true); // Oculta id_nf
 
     ui->Tview_ProdutosNota->setModel(modelProdutosNota);
@@ -147,25 +163,21 @@ void Entradas::on_EntradaSelecionada(const QModelIndex &current, const QModelInd
 void Entradas::carregarProdutosDaNota(qlonglong id_nf)
 {
     prodNotaServ.listarPorNota(modelProdutosNota, id_nf);
+    ui->Tview_ProdutosNota->setColumnHidden(0, true);
     ui->Tview_ProdutosNota->resizeColumnsToContents();
+    ui->Tview_ProdutosNota->horizontalHeader()->setStretchLastSection(false);
+    ui->Tview_ProdutosNota->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Stretch);
+    atualizarResumoItens();
+    atualizarBotoesAcao();
 }
 
-void Entradas::on_Tview_ProdutosNota_customContextMenuRequested(const QPoint &pos)
+QList<ProdutoNotaDTO> Entradas::produtosNotaSelecionados(bool *algumDevolvido)
 {
-    QModelIndex index = ui->Tview_ProdutosNota->indexAt(pos);
-    if (!index.isValid())
-        return;
-
-    // Todas as linhas selecionadas
-    QModelIndexList selecionadas = ui->Tview_ProdutosNota->selectionModel()->selectedRows();
-
-    if (selecionadas.isEmpty())
-        return;
-
-    // adiciona produtos selecionados a lista
     QList<ProdutoNotaDTO> prodSelecionados;
-    bool jaDevolvido = false;
+    if (algumDevolvido)
+        *algumDevolvido = false;
 
+    const QModelIndexList selecionadas = ui->Tview_ProdutosNota->selectionModel()->selectedRows();
     for (const QModelIndex &linha : selecionadas) {
         qlonglong id = ui->Tview_ProdutosNota->model()
         ->data(ui->Tview_ProdutosNota->model()->index(linha.row(), 0))
@@ -175,10 +187,182 @@ void Entradas::on_Tview_ProdutosNota_customContextMenuRequested(const QPoint &po
         if(!prod.descricao.isEmpty()){
             prodSelecionados.append(prod);
         }
-        if(prod.status == "DEVOLVIDO"){
-            jaDevolvido = true;
+        if(algumDevolvido && prod.status == "DEVOLVIDO"){
+            *algumDevolvido = true;
         }
     }
+    return prodSelecionados;
+}
+
+void Entradas::atualizarResumoItens()
+{
+    if (id_nf_selec <= 0 || modelProdutosNota->rowCount() == 0) {
+        ui->Lbl_ResumoItens->clear();
+        return;
+    }
+    const ResumoEstoqueNota pend = estoqueNotaServ.contarPendentes(id_nf_selec);
+    const int total = modelProdutosNota->rowCount();
+    if (pend.pendentes == 0) {
+        ui->Lbl_ResumoItens->setText(QString("· todos os %1 itens já estão no estoque").arg(total));
+        return;
+    }
+    ui->Lbl_ResumoItens->setText(QString("· %1 de %2 itens ainda não estão no estoque")
+                                     .arg(pend.pendentes).arg(total));
+}
+
+void Entradas::atualizarBotoesAcao()
+{
+    const bool temNota = id_nf_selec > 0 && modelProdutosNota->rowCount() > 0;
+    const QModelIndexList selecionadas = ui->Tview_ProdutosNota->selectionModel()->selectedRows();
+    const bool temSelecao = temNota && !selecionadas.isEmpty();
+
+    ui->Btn_AdicionarEstoque->setEnabled(temSelecao && selecionadas.size() == 1);
+    ui->Btn_AdicionarTodos->setEnabled(temNota && estoqueNotaServ.contarPendentes(id_nf_selec).pendentes > 0);
+    ui->Btn_Devolucao->setEnabled(temSelecao);
+    ui->Btn_VerDanfe->setEnabled(id_nf_selec > 0);
+}
+
+void Entradas::adicionarSelecionadoAoEstoque()
+{
+    const QList<ProdutoNotaDTO> prodSelecionados = produtosNotaSelecionados();
+    if (prodSelecionados.isEmpty()) {
+        QMessageBox::information(this, "Adicionar ao estoque", "Selecione um item da nota.");
+        return;
+    }
+    const ProdutoNotaDTO &item = prodSelecionados.first();
+    if (item.adicionado) {
+        QMessageBox::information(this, "Adicionar ao estoque",
+                                 "Este item já foi lançado no estoque.");
+        return;
+    }
+
+    LeditDialog *barcodePage = new LeditDialog(this);
+    barcodePage->setLabelText("Digite ou escaneie o código do produto selecionado:");
+    if (EstoqueNota_service::ehGtinValido(item.codigoBarras))
+        barcodePage->setLineEditText(item.codigoBarras.trimmed());
+    barcodePage->show();
+
+    if (barcodePage->exec() != QDialog::Accepted)
+        return;
+
+    QString codigoEscaneado = barcodePage->getLineEditText();
+
+    if (prodServ.codigoBarrasExiste(codigoEscaneado) && !codigoEscaneado.isEmpty()) {
+        QMessageBox::warning(this, "Aviso", "Já existe um produto com esse código cadastrado.");
+
+        addProdComCodBarras(QString::number(item.id), codigoEscaneado);
+    } else {
+        addProdSemCodBarras(QString::number(item.id), codigoEscaneado);
+    }
+}
+
+void Entradas::devolverSelecionados()
+{
+    bool jaDevolvido = false;
+    QList<ProdutoNotaDTO> prodSelecionados = produtosNotaSelecionados(&jaDevolvido);
+    if (prodSelecionados.isEmpty()) {
+        QMessageBox::information(this, "Emitir devolução", "Selecione os itens que serão devolvidos.");
+        return;
+    }
+    if (jaDevolvido) {
+        QMessageBox::information(this, "Emitir devolução",
+                                 "Há item selecionado que já foi devolvido.");
+        return;
+    }
+
+    QMessageBox::StandardButton resposta = QMessageBox::question(
+        this,
+        "Confirmação",
+        QString("Tem certeza que deseja emitir uma nota de devolução de "
+                "%1 produto(s) selecionado(s)?")
+            .arg(prodSelecionados.size()),
+        QMessageBox::Yes | QMessageBox::No
+        );
+    if(resposta == QMessageBox::Yes){
+        devolverProdutos(prodSelecionados);
+    }
+}
+
+void Entradas::on_Btn_AdicionarEstoque_clicked()
+{
+    adicionarSelecionadoAoEstoque();
+}
+
+void Entradas::on_Btn_Devolucao_clicked()
+{
+    devolverSelecionados();
+}
+
+void Entradas::on_Btn_AdicionarTodos_clicked()
+{
+    if (id_nf_selec <= 0)
+        return;
+
+    const ResumoEstoqueNota pend = estoqueNotaServ.contarPendentes(id_nf_selec);
+    if (pend.pendentes == 0) {
+        QMessageBox::information(this, "Adicionar todos", "Todos os itens desta nota já estão no estoque.");
+        return;
+    }
+
+    QString pergunta = QString("Lançar %1 item(ns) desta nota no estoque agora?\n\n"
+                               "• %2 com código de barras: soma ao produto existente ou cadastra um novo.\n"
+                               "• %3 sem código de barras: soma ao produto de mesma descrição ou cadastra "
+                               "com um código interno gerado pelo sistema.\n\n"
+                               "Preço de venda = custo da nota + %4% de lucro (Configurações).")
+                           .arg(pend.pendentes).arg(pend.comCodigo).arg(pend.semCodigo)
+                           .arg(configDTO.porcentLucroFinanceiro);
+    if (QMessageBox::question(this, "Adicionar todos pendentes", pergunta,
+                              QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes) != QMessageBox::Yes)
+        return;
+
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    const ResumoEstoqueNota r = estoqueNotaServ.adicionarPendentes(id_nf_selec);
+    QApplication::restoreOverrideCursor();
+
+    carregarProdutosDaNota(id_nf_selec);
+    if (r.cadastrados + r.atualizados > 0)
+        emit produtoAdicionado();
+
+    QString resumo = QString("Produtos novos cadastrados: %1\nProdutos existentes atualizados: %2")
+                         .arg(r.cadastrados).arg(r.atualizados);
+    if (r.comCodigoInterno > 0)
+        resumo += QString("\nCadastrados com código interno (sem GTIN na nota): %1").arg(r.comCodigoInterno);
+    if (r.semNf > 0)
+        resumo += QString("\nCadastrados sem NF (NCM inválido na nota; ajuste em Produtos): %1").arg(r.semNf);
+    if (!r.falhas.isEmpty())
+        resumo += QString("\n\nNão lançados (%1):\n").arg(r.falhas.size()) + r.falhas.join("\n");
+
+    if (r.falhas.isEmpty())
+        QMessageBox::information(this, "Adicionar todos pendentes", resumo);
+    else
+        QMessageBox::warning(this, "Adicionar todos pendentes", resumo);
+}
+
+void Entradas::on_Btn_VerDanfe_clicked()
+{
+    if (id_nf_selec <= 0)
+        return;
+    const NotaFiscalDTO nota = notaServ.getNotaById(id_nf_selec);
+    const QString xmlPath = AppPath_service::resolverXmlPath(nota.xmlPath);
+    try {
+        DanfeUtil danfe(this);
+        if (!danfe.abrirDanfePorXml(xmlPath))
+            QMessageBox::warning(this, "Ver DANFE", "O XML desta nota não foi encontrado:\n" + xmlPath);
+    } catch (const std::exception &e) {
+        QMessageBox::warning(this, "Ver DANFE", QString("Não foi possível gerar o DANFE:\n%1").arg(e.what()));
+    }
+}
+
+void Entradas::on_Tview_ProdutosNota_customContextMenuRequested(const QPoint &pos)
+{
+    QModelIndex index = ui->Tview_ProdutosNota->indexAt(pos);
+    if (!index.isValid())
+        return;
+
+    bool jaDevolvido = false;
+    const QList<ProdutoNotaDTO> prodSelecionados = produtosNotaSelecionados(&jaDevolvido);
+    if (prodSelecionados.isEmpty())
+        return;
 
     QMenu menu(this);
     QAction *adicionar = menu.addAction("Adicionar ao Estoque");
@@ -193,34 +377,9 @@ void Entradas::on_Tview_ProdutosNota_customContextMenuRequested(const QPoint &po
         return;
 
     if (selecionada == adicionar) {
-        LeditDialog *barcodePage = new LeditDialog(this);
-        barcodePage->setLabelText("Digite ou escaneie o código do produto selecionado:");
-        barcodePage->show();
-
-        if (barcodePage->exec() == QDialog::Accepted) {
-            QString codigoEscaneado = barcodePage->getLineEditText();
-
-            if (prodServ.codigoBarrasExiste(codigoEscaneado) && !codigoEscaneado.isEmpty()) {
-                QMessageBox::warning(this, "Aviso", "Já existe um produto com esse código cadastrado.");
-
-                addProdComCodBarras(QString::number(prodSelecionados.first().id), codigoEscaneado);
-            } else {
-                addProdSemCodBarras(QString::number(prodSelecionados.first().id), codigoEscaneado);
-            }
-        }
-
+        adicionarSelecionadoAoEstoque();
     } else if (selecionada == devolucao) {
-        QMessageBox::StandardButton resposta = QMessageBox::question(
-            this,
-            "Confirmação",
-            QString("Tem certeza que deseja emitir uma nota de devolução de "
-                    "%1 produto(s) selecionado(s)?")
-                .arg(prodSelecionados.size()),
-            QMessageBox::Yes | QMessageBox::No
-            );
-        if(resposta == QMessageBox::Yes){
-            devolverProdutos(prodSelecionados);
-        }
+        devolverSelecionados();
     }
 }
 
@@ -534,7 +693,7 @@ void Entradas::buscarChave()
         if (r.ok) {
             QMessageBox::information(this, "NF-e encontrada",
                 "A nota foi buscada na SEFAZ e está selecionada na lista.\n"
-                "Escolha os produtos e use o botão direito > \"Adicionar ao Estoque\".");
+                "Use \"Adicionar todos pendentes\" ou selecione um item e clique em \"Adicionar ao estoque\".");
         } else {
             QMessageBox::information(this, "NF-e já lançada",
                 "Esta NF-e já estava em Compras. Ela foi selecionada na lista, sem duplicar a entrada.");

@@ -14,6 +14,7 @@ public:
     explicit ProdutoNota_repository(QObject *parent = nullptr);
     bool inserir(ProdutoNotaDTO produtoNota);
     void listarPorNota(QSqlQueryModel *model, qlonglong idNf);
+    QList<ProdutoNotaDTO> listarDtoPorNota(qlonglong idNf);
     ProdutoNotaDTO getProdutoNota(qlonglong id);
     QString getXmlPathPorId(qlonglong id);
     bool marcarComoAdicionado(qlonglong id);

@@ -97,6 +97,30 @@ bool ProdutoNota_repository::inserir(ProdutoNotaDTO produtoNota){
 
 }
 
+QList<ProdutoNotaDTO> ProdutoNota_repository::listarDtoPorNota(qlonglong idNf)
+{
+    QList<ProdutoNotaDTO> lista;
+    if(!DatabaseConnection_service::open()){
+        qDebug() << "erro ao abrir banco de dados listarDtoPorNota";
+        return lista;
+    }
+
+    QSqlQuery query(db);
+    query.prepare("SELECT id FROM produtos_nota WHERE id_nf = :idnf ORDER BY nitem");
+    query.bindValue(":idnf", idNf);
+    if(!query.exec()){
+        qDebug() << "Query nao rodou listarDtoPorNota" << query.lastError().text();
+        return lista;
+    }
+
+    QList<qlonglong> ids;
+    while(query.next())
+        ids << query.value(0).toLongLong();
+    for (qlonglong id : ids)
+        lista << getProdutoNota(id);
+    return lista;
+}
+
 ProdutoNotaDTO ProdutoNota_repository::getProdutoNota(qlonglong id){
     ProdutoNotaDTO prod;
     if(!DatabaseConnection_service::open()){

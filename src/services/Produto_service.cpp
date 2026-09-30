@@ -264,6 +264,10 @@ ProdutoDTO Produto_Service::getProdutoPeloCodBarras(const QString &codigo){
     return repo.getProdutoPeloCodBarras(codigo);
 }
 
+ProdutoDTO Produto_Service::getProdutoPelaDescricao(const QString &descricao){
+    return repo.getProdutoPelaDescricao(descricao);
+}
+
 QVariantMap Produto_Service::getProdutoPorCodBarrasMap(const QString &codigo){
     return repo.getProdutoPorCodBarrasMap(codigo);
 }

@@ -101,6 +101,7 @@ set(QESTOQUE_SOURCES
     src/services/notafiscal_service.cpp
     src/services/produtonota_service.cpp
     src/services/entradanfe_service.cpp
+    src/services/estoquenota_service.cpp
     src/services/vendas_service.cpp
     src/services/produtovenda_service.cpp
     src/services/entradasvendas_service.cpp
@@ -299,6 +300,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/repository/produtonota_repository.h src/repository/produtonota_repository.cpp
         src/services/produtonota_service.h src/services/produtonota_service.cpp
         src/services/entradanfe_service.h src/services/entradanfe_service.cpp
+        src/services/estoquenota_service.h src/services/estoquenota_service.cpp
         src/dto/Cliente_dto.h
         src/repository/cliente_repository.h src/repository/cliente_repository.cpp
         src/services/cliente_service.h src/services/cliente_service.cpp

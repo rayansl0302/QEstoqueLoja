@@ -29,6 +29,11 @@ void ProdutoNota_service::listarPorNota(QSqlQueryModel *model, qlonglong idNf)
     prodNotaRepo.listarPorNota(model, idNf);
 }
 
+QList<ProdutoNotaDTO> ProdutoNota_service::listarDtoPorNota(qlonglong idNf)
+{
+    return prodNotaRepo.listarDtoPorNota(idNf);
+}
+
 ProdutoNotaDTO ProdutoNota_service::getProdutoNota(qlonglong id){
     return prodNotaRepo.getProdutoNota(id);
 }
