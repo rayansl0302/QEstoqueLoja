@@ -62,6 +62,8 @@ private slots:
 
     void on_Btn_AbrirPag_clicked();
 
+    void on_Btn_ReimprimirNota_clicked();
+
     void on_Tview_ProdutosVendidos_customContextMenuRequested(const QPoint &pos);
 
     void on_cb_BuscaVendasPrazo_checkStateChanged(const Qt::CheckState &arg1);

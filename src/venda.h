@@ -18,6 +18,8 @@
 #include "services/notafiscal_service.h"
 #include "subclass/waitdialog.h"
 
+class QLabel;
+class QResizeEvent;
 
 namespace Ui {
 class venda;
@@ -62,6 +64,7 @@ protected:
     bool pagamentoValido();
     void selecionarFormaPagamento(int index);
     bool eventFilter(QObject *obj, QEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
 
 private slots:
     void on_Btn_SelecionarProduto_clicked();
@@ -108,6 +111,8 @@ private:
     float obterValorFinal(QString taxa, QString desconto);
     void descontoTaxa();
     void terminarPagamento();
+    void mostrarToast(const QString &texto);
+    void posicionarToast();
     void salvarRascunho();
     void descartarRascunho();
     void verificarRascunho();
@@ -129,7 +134,10 @@ private:
     ItemRemovido ultimoRemovido;
     bool temRemovido = false;
     bool pulouCliente = false;
+    bool vendaFinalizada = false;
     QTimer *desfazerTimer = nullptr;
+    QLabel *toastSucesso = nullptr;
+    QTimer *toastTimer = nullptr;
 
 signals:
     void vendaConcluida();

@@ -21,7 +21,11 @@
 #include <QShortcut>
 #include <cmath>
 #include "delegateacoescarrinho.h"
+#include "delegateacoescatalogo.h"
 #include "delegatecatalogopdv.h"
+#include <QIdentityProxyModel>
+#include <QLabel>
+#include <QResizeEvent>
 #include <QSettings>
 #include "infra/apppath_service.h"
 #include "inserircliente.h"
@@ -30,6 +34,67 @@
 #include "services/config_service.h"
 
 namespace {
+// Coluna extra "Ações" em cima do QSqlQueryModel do catálogo, sem alterar o SELECT.
+class CatalogoAcoesProxy : public QIdentityProxyModel
+{
+public:
+    explicit CatalogoAcoesProxy(QObject *parent = nullptr)
+        : QIdentityProxyModel(parent) {}
+
+    int columnCount(const QModelIndex &parent = QModelIndex()) const override
+    {
+        if (parent.isValid() || !sourceModel())
+            return 0;
+        return sourceModel()->columnCount() + 1;
+    }
+
+    QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override
+    {
+        if (parent.isValid() || !sourceModel())
+            return {};
+        if (column == sourceModel()->columnCount()) {
+            if (row < 0 || row >= sourceModel()->rowCount())
+                return {};
+            return createIndex(row, column);
+        }
+        return QIdentityProxyModel::index(row, column, parent);
+    }
+
+    QModelIndex mapToSource(const QModelIndex &proxyIndex) const override
+    {
+        if (!proxyIndex.isValid() || !sourceModel())
+            return {};
+        if (proxyIndex.column() >= sourceModel()->columnCount())
+            return {};
+        return QIdentityProxyModel::mapToSource(proxyIndex);
+    }
+
+    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override
+    {
+        if (!sourceModel() || index.column() >= sourceModel()->columnCount())
+            return {};
+        return QIdentityProxyModel::data(index, role);
+    }
+
+    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override
+    {
+        if (orientation == Qt::Horizontal && sourceModel()
+            && section == sourceModel()->columnCount()) {
+            if (role == Qt::DisplayRole)
+                return QStringLiteral("Ações");
+            return {};
+        }
+        return QIdentityProxyModel::headerData(section, orientation, role);
+    }
+
+    Qt::ItemFlags flags(const QModelIndex &index) const override
+    {
+        if (sourceModel() && index.column() == sourceModel()->columnCount())
+            return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+        return QIdentityProxyModel::flags(index);
+    }
+};
+
 // 1 -> "1", 1.5 -> "1,50" (sem separador de milhar, para o editor aceitar de volta)
 QString formatarQuantidade(const QLocale &base, double q)
 {
@@ -63,19 +128,34 @@ venda::venda(QWidget *parent) :
     ui->setupUi(this);
 
     prodServ.listarProdutos(modeloProdutos);
-    ui->Tview_Produtos->setModel(modeloProdutos);
     modeloProdutos->setHeaderData(0, Qt::Horizontal, tr("ID"));
     modeloProdutos->setHeaderData(1, Qt::Horizontal, tr("Quantidade"));
     modeloProdutos->setHeaderData(2, Qt::Horizontal, tr("Descrição"));
     modeloProdutos->setHeaderData(3, Qt::Horizontal, tr("Preço"));
     modeloProdutos->setHeaderData(4, Qt::Horizontal, tr("Código de Barras"));
     modeloProdutos->setHeaderData(5, Qt::Horizontal, tr("NF"));
+    auto *proxyCatalogo = new CatalogoAcoesProxy(this);
+    proxyCatalogo->setSourceModel(modeloProdutos);
+    ui->Tview_Produtos->setModel(proxyCatalogo);
 
     // delegates
     // catálogo: borda vermelha no estoque zerado + fundo discreto na linha (só visual)
     ui->Tview_Produtos->setItemDelegateForColumn(1, new DelegateCatalogoPDV(true, this));
     for (int coluna : {2, 3, 4})
         ui->Tview_Produtos->setItemDelegateForColumn(coluna, new DelegateCatalogoPDV(false, this));
+    DelegateAcoesCatalogo *delegateAcoesCatalogo = new DelegateAcoesCatalogo(this);
+    ui->Tview_Produtos->setItemDelegateForColumn(modeloProdutos->columnCount(), delegateAcoesCatalogo);
+    connect(delegateAcoesCatalogo, &DelegateAcoesCatalogo::adicionarClicado, this, [this](int linha) {
+        ui->Tview_Produtos->selectRow(linha);
+        on_Btn_SelecionarProduto_clicked();
+    }, Qt::QueuedConnection);
+    connect(delegateAcoesCatalogo, &DelegateAcoesCatalogo::verClicado, this, [this](int linha) {
+        ui->Tview_Produtos->selectRow(linha);
+        verProd();
+    }, Qt::QueuedConnection);
+    ui->Tview_Produtos->verticalHeader()->setDefaultSectionSize(34);
+    ui->Tview_Produtos->setMouseTracking(true);
+    ui->Tview_Produtos->viewport()->setMouseTracking(true);
     ui->Tview_Produtos->installEventFilter(this);
     ui->Ledit_Pesquisa->installEventFilter(this);
     DelegatePrecoValidate *validatePreco = new DelegatePrecoValidate(this);
@@ -107,7 +187,7 @@ venda::venda(QWidget *parent) :
     selecionarPrimeiraLinhaCatalogo();
 
     ui->Tview_Produtos->setColumnWidth(2, 260);
-    ui->Tview_Produtos->setColumnWidth(1, 85);
+    ui->Tview_Produtos->setColumnWidth(1, 148);
     ui->Tview_ProdutosSelecionados->setColumnWidth(0, 100);
     ui->Tview_ProdutosSelecionados->setColumnWidth(1, 170);
     ui->Tview_ProdutosSelecionados->setColumnWidth(2, 300);
@@ -129,6 +209,8 @@ venda::venda(QWidget *parent) :
             [this](int linha) { alterarQuantidade(linha, +1); }, Qt::QueuedConnection);
     connect(delegateAcoes, &DelegateAcoesCarrinho::removerClicado, this,
             [this](int linha) { removerItem(linha); }, Qt::QueuedConnection);
+    ui->Tview_ProdutosSelecionados->setMouseTracking(true);
+    ui->Tview_ProdutosSelecionados->viewport()->setMouseTracking(true);
     ui->Tview_ProdutosSelecionados->installEventFilter(this);
 
     // desfazer a última remoção
@@ -212,6 +294,8 @@ venda::venda(QWidget *parent) :
 
     // duplo clique adiciona ao carrinho; a ficha do produto fica no menu de contexto
     connect(ui->Tview_Produtos, &QTableView::doubleClicked, this, [this](const QModelIndex &idx) {
+        if (!idx.isValid() || idx.column() == idx.model()->columnCount() - 1)
+            return;
         ui->Tview_Produtos->selectRow(idx.row());
         on_Btn_SelecionarProduto_clicked();
     });
@@ -609,6 +693,9 @@ void venda::on_CBox_ModeloEmit_currentIndexChanged(int index)
 
 void venda::terminarPagamento()
 {
+    if (vendaFinalizada)
+        return;
+
     QString troco          = ui->Lbl_Troco->text();
     QString recebido       = ui->Ledit_Recebido->text();
     QString forma          = ui->CBox_FormaPagamento->currentText();
@@ -742,12 +829,59 @@ void venda::terminarPagamento()
         // index 2 = Não Emitir NF — nada a fazer
     }
 
+    vendaFinalizada = true;
+    const QString totalVenda = ui->Lbl_Total->text();
+    const QString mensagem = QString("Venda realizada com sucesso. Total: R$ %1").arg(totalVenda);
+    const bool novaVenda = ui->Chk_NovaVenda->isChecked();
+    const int atrasoAviso = (waitDialog && waitDialog->isVisible()) ? 1600 : 0;
+
     descartarRascunho();
     emit vendaConcluida();
-    if (ui->Chk_NovaVenda->isChecked())
+    if (novaVenda) {
         reiniciarVenda(false);
-    else
-        this->close();
+        QTimer::singleShot(atrasoAviso, this, [this, mensagem]() { mostrarToast(mensagem); });
+    } else {
+        QTimer::singleShot(atrasoAviso, this, [this, mensagem]() {
+            QMessageBox::information(this, "Venda", mensagem);
+            this->close();
+        });
+    }
+}
+
+void venda::mostrarToast(const QString &texto)
+{
+    if (!toastSucesso) {
+        toastSucesso = new QLabel(this);
+        toastSucesso->setAlignment(Qt::AlignCenter);
+        toastSucesso->setAttribute(Qt::WA_TransparentForMouseEvents);
+        toastSucesso->setStyleSheet(
+            "background-color: rgb(30,140,70); color: white;"
+            "font: 700 12pt \"Segoe UI\"; border-radius: 8px; padding: 10px 18px;");
+        toastTimer = new QTimer(this);
+        toastTimer->setSingleShot(true);
+        connect(toastTimer, &QTimer::timeout, toastSucesso, &QWidget::hide);
+    }
+    toastSucesso->setText(texto);
+    posicionarToast();
+    toastSucesso->show();
+    toastSucesso->raise();
+    toastTimer->start(3500);
+}
+
+void venda::posicionarToast()
+{
+    if (!toastSucesso)
+        return;
+    const int largura = qBound(280, toastSucesso->fontMetrics().horizontalAdvance(toastSucesso->text()) + 48,
+                               qMax(280, width() - 24));
+    const int altura = 52;
+    toastSucesso->setGeometry(qMax(8, (width() - largura) / 2), 74, largura, altura);
+}
+
+void venda::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    posicionarToast();
 }
 
 void venda::definirClientePadrao()
@@ -766,6 +900,7 @@ void venda::definirClientePadrao()
 // Deixa a tela pronta para a próxima venda, sem fechar.
 void venda::reiniciarVenda(bool manterRascunho)
 {
+    vendaFinalizada = false;
     modeloSelecionados->removeRows(0, modeloSelecionados->rowCount());
     temRemovido = false;
     desfazerTimer->stop();
@@ -1129,20 +1264,35 @@ void venda::configurarColunasCatalogo()
     // só Código de barras (4), Descrição (2), Preço (3) e Estoque (1);
     // esconde o resto sem mexer na query (o código lê as colunas por índice)
     QTableView *view = ui->Tview_Produtos;
-    for (int col = 0; col < modeloProdutos->columnCount(); ++col)
+    const int colunasOrigem = modeloProdutos->columnCount();
+    const int colAcoes = view->model() ? view->model()->columnCount() - 1 : -1;
+    const bool temAcoes = colAcoes >= colunasOrigem && colunasOrigem > 0;
+    for (int col = 0; col < colunasOrigem; ++col)
         view->setColumnHidden(col, !(col == 1 || col == 2 || col == 3 || col == 4));
+    if (temAcoes)
+        view->setColumnHidden(colAcoes, false);
 
     QHeaderView *cabecalho = view->horizontalHeader();
     cabecalho->setStretchLastSection(false);
-    cabecalho->moveSection(cabecalho->visualIndex(4), 0);
-    cabecalho->moveSection(cabecalho->visualIndex(1), cabecalho->count() - 1);
-    cabecalho->setSectionResizeMode(2, QHeaderView::Stretch);
-    cabecalho->setSectionResizeMode(1, QHeaderView::Fixed);
-    cabecalho->setSectionResizeMode(3, QHeaderView::Fixed);
-    cabecalho->setSectionResizeMode(4, QHeaderView::Fixed);
-    cabecalho->resizeSection(1, 110);
-    cabecalho->resizeSection(3, 100);
-    cabecalho->resizeSection(4, 160);
+    if (cabecalho->count() > 4) {
+        if (cabecalho->visualIndex(4) >= 0)
+            cabecalho->moveSection(cabecalho->visualIndex(4), 0);
+        if (cabecalho->visualIndex(1) >= 0)
+            cabecalho->moveSection(cabecalho->visualIndex(1), cabecalho->count() - 1);
+        if (temAcoes && cabecalho->visualIndex(colAcoes) >= 0)
+            cabecalho->moveSection(cabecalho->visualIndex(colAcoes), cabecalho->count() - 1);
+        cabecalho->setSectionResizeMode(2, QHeaderView::Stretch);
+        cabecalho->setSectionResizeMode(1, QHeaderView::Fixed);
+        cabecalho->setSectionResizeMode(3, QHeaderView::Fixed);
+        cabecalho->setSectionResizeMode(4, QHeaderView::Fixed);
+        if (temAcoes && colAcoes < cabecalho->count())
+            cabecalho->setSectionResizeMode(colAcoes, QHeaderView::Fixed);
+        cabecalho->resizeSection(1, 148);
+        cabecalho->resizeSection(3, 100);
+        cabecalho->resizeSection(4, 160);
+        if (temAcoes && colAcoes < cabecalho->count())
+            cabecalho->resizeSection(colAcoes, 88);
+    }
 }
 
 void venda::focarCatalogo()
@@ -1151,7 +1301,7 @@ void venda::focarCatalogo()
         return;
     ui->Tview_Produtos->setFocus();
     ui->Tview_Produtos->selectRow(0);
-    ui->Tview_Produtos->setCurrentIndex(modeloProdutos->index(0, 2));
+    ui->Tview_Produtos->setCurrentIndex(ui->Tview_Produtos->model()->index(0, 2));
     ui->Tview_Produtos->scrollToTop();
 }
 

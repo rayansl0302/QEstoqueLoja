@@ -351,6 +351,9 @@ QLabel {
                 <property name="text">
                  <string/>
                 </property>
+                <property name="toolTip">
+                 <string>Buscar produto (F1)</string>
+                </property>
                 <property name="icon">
                  <iconset resource="../Imagens/recursosImg.qrc">
                   <normaloff>:/QEstoqueLOja/edit-find.svg</normaloff>:/QEstoqueLOja/edit-find.svg</iconset>
@@ -373,6 +376,9 @@ QLabel {
               <property name="text">
                <string>Selecionar Produto</string>
               </property>
+              <property name="toolTip">
+               <string>Adiciona o produto selecionado ao carrinho</string>
+              </property>
               <property name="icon">
                <iconset resource="../Imagens/recursosImg.qrc">
                 <normaloff>:/QEstoqueLOja/dialog-ok-apply.svg</normaloff>:/QEstoqueLOja/dialog-ok-apply.svg</iconset>
@@ -389,17 +395,44 @@ QLabel {
              </widget>
             </item>
             <item>
-             <spacer>
-              <property name="orientation">
-               <enum>Qt::Orientation::Vertical</enum>
+             <widget class="QLabel" name="Lbl_PainelAtalhos">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                <horstretch>0</horstretch>
+                <verstretch>1</verstretch>
+               </sizepolicy>
               </property>
-              <property name="sizeHint" stdset="0">
-               <size>
-                <width>20</width>
-                <height>40</height>
-               </size>
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>260</height>
+                </size>
+               </property>
+              <property name="styleSheet">
+               <string notr="true">background-color: rgb(245,247,250); color: rgb(40,55,75); border-radius: 8px; padding: 12px; font: 10pt &quot;Segoe UI&quot;;</string>
               </property>
-             </spacer>
+              <property name="text">
+               <string>Atalhos
+
+F1      Buscar
+F2      Cliente
+F3      Data da venda
+F4      Catálogo
+F9      Carrinho
+Enter   Adicionar
++ / −   Quantidade
+Del     Remover
+F8      Desfazer
+F10     Finalizar
+Esc     Cancelar</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignTop</set>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
             </item>
            </layout>
           </widget>
@@ -964,6 +997,9 @@ QLabel { background-color: transparent; border: none; }
          </item>
          <item>
           <widget class="QCheckBox" name="CheckImprimirCupomPag">
+           <property name="toolTip">
+            <string>Imprime o cupom na impressora térmica ao confirmar a venda</string>
+           </property>
            <property name="text">
             <string>Imprimir cupom na impressora térmica</string>
            </property>
@@ -1262,6 +1298,9 @@ QLineEdit { background-color: white; border: 1px solid rgb(155,165,185); border-
            </item>
            <item>
             <widget class="QCheckBox" name="CheckImprimirCNF">
+             <property name="toolTip">
+              <string>Imprime o cupom ao confirmar a venda</string>
+             </property>
              <property name="text">
               <string>Imprimir cupom</string>
              </property>

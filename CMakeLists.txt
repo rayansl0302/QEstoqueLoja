@@ -224,6 +224,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/delegatelockcol.h src/delegatelockcol.cpp
         src/delegatequant.h src/delegatequant.cpp
         src/delegateacoescarrinho.h src/delegateacoescarrinho.cpp
+        src/delegateacoescatalogo.h src/delegateacoescatalogo.cpp
         src/delegatecatalogopdv.h src/delegatecatalogopdv.cpp
         src/clientes.h src/clientes.cpp src/clientes.ui
         src/alterarcliente.h src/alterarcliente.cpp src/alterarcliente.ui

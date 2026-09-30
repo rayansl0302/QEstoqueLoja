@@ -383,6 +383,40 @@ void Vendas::on_Btn_AbrirPag_clicked()
     actionAbrirPagamentosVenda(idVendaSelec);
 }
 
+void Vendas::on_Btn_ReimprimirNota_clicked()
+{
+    if (!ui->Tview_Vendas2->currentIndex().isValid()) {
+        QMessageBox::warning(this, "Aviso", "Selecione uma venda para reimprimir a nota.");
+        return;
+    }
+
+    const QModelIndexList selecionadas = ui->Tview_Vendas2->selectionModel()->selectedRows();
+    if (selecionadas.isEmpty()) {
+        QMessageBox::warning(this, "Aviso", "Selecione uma venda para reimprimir a nota.");
+        return;
+    }
+
+    const QString idVenda = ui->Tview_Vendas2->model()->data(
+        ui->Tview_Vendas2->model()->index(selecionadas.first().row(), 0)).toString();
+    if (idVenda.isEmpty()) {
+        QMessageBox::warning(this, "Aviso", "Selecione uma venda para reimprimir a nota.");
+        return;
+    }
+
+    if (vendaServ.vendaPossuiNota(idVenda.toLongLong())) {
+        abrirDanfeXml(idVenda);
+        return;
+    }
+
+    const auto resposta = QMessageBox::question(
+        this,
+        "Reimprimir nota",
+        "Essa venda não tem nota fiscal.\nDeseja reimprimir o cupom do cliente?",
+        QMessageBox::Yes | QMessageBox::No);
+    if (resposta == QMessageBox::Yes)
+        imprimirReciboVenda(idVenda.toLongLong());
+}
+
 void Vendas::on_Tview_ProdutosVendidos_customContextMenuRequested(const QPoint &pos)
 {
     QModelIndexList selectedRows = ui->Tview_ProdutosVendidos->selectionModel()->selectedRows();

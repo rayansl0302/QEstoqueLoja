@@ -1,4 +1,4 @@
-#include "delegateacoescarrinho.h"
+#include "delegateacoescatalogo.h"
 #include <QPainter>
 #include <QMouseEvent>
 #include <QHelpEvent>
@@ -6,66 +6,69 @@
 #include <QAbstractItemView>
 
 namespace {
-constexpr int kLargura = 36;
-constexpr int kAltura = 28;
+constexpr int kLargura = 32;
+constexpr int kAltura = 26;
 constexpr int kEspaco = 6;
+constexpr int kColunaEstoque = 1;
 }
 
-DelegateAcoesCarrinho::DelegateAcoesCarrinho(QObject *parent)
+DelegateAcoesCatalogo::DelegateAcoesCatalogo(QObject *parent)
     : QStyledItemDelegate(parent)
 {
-    iconeMenos.addFile(":/QEstoqueLOja/list-remove.svg");
-    iconeMais.addFile(":/QEstoqueLOja/list-add.svg");
-    iconeRemover.addFile(":/QEstoqueLOja/amarok-cart-remove.svg");
+    iconeAdicionar.addFile(":/QEstoqueLOja/add-product.svg");
+    iconeVer.addFile(":/QEstoqueLOja/amarok-cart-view.svg");
 }
 
-QRect DelegateAcoesCarrinho::retanguloBotao(const QRect &celula, int botao) const
+QRect DelegateAcoesCatalogo::retanguloBotao(const QRect &celula, int botao) const
 {
-    const int total = 3 * kLargura + 2 * kEspaco;
+    const int total = 2 * kLargura + kEspaco;
     const int x0 = celula.left() + (celula.width() - total) / 2;
     const int y0 = celula.top() + (celula.height() - kAltura) / 2;
     return QRect(x0 + botao * (kLargura + kEspaco), y0, kLargura, kAltura);
 }
 
-DelegateAcoesCarrinho::Botao DelegateAcoesCarrinho::botaoEm(const QRect &celula, const QPoint &pos) const
+DelegateAcoesCatalogo::Botao DelegateAcoesCatalogo::botaoEm(const QRect &celula, const QPoint &pos) const
 {
-    for (int b = Menos; b <= Remover; ++b) {
+    for (int b = Adicionar; b <= Ver; ++b) {
         if (retanguloBotao(celula, b).contains(pos))
             return static_cast<Botao>(b);
     }
     return Nenhum;
 }
 
-void DelegateAcoesCarrinho::paint(QPainter *painter, const QStyleOptionViewItem &option,
-                                  const QModelIndex &) const
+void DelegateAcoesCatalogo::paint(QPainter *painter, const QStyleOptionViewItem &option,
+                                  const QModelIndex &index) const
 {
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing);
-    painter->fillRect(option.rect, (option.state & QStyle::State_Selected)
-                                       ? option.palette.highlight()
-                                       : option.palette.base());
 
-    const QIcon *icones[3] = {&iconeMenos, &iconeMais, &iconeRemover};
-    for (int b = Menos; b <= Remover; ++b) {
+    QColor fundo = option.palette.base().color();
+    if (option.state & QStyle::State_Selected)
+        fundo = option.palette.highlight().color();
+    else if (index.sibling(index.row(), kColunaEstoque).data().toDouble() <= 0)
+        fundo = QColor(252, 232, 230);
+    painter->fillRect(option.rect, fundo);
+
+    const QIcon *icones[2] = {&iconeAdicionar, &iconeVer};
+    for (int b = Adicionar; b <= Ver; ++b) {
         const QRect r = retanguloBotao(option.rect, b);
         painter->setPen(QPen(QColor(175, 185, 205), 1));
         painter->setBrush(QColor(245, 247, 250));
         painter->drawRoundedRect(r, 6, 6);
-        icones[b]->paint(painter, r.adjusted(6, 3, -6, -3));
+        icones[b]->paint(painter, r.adjusted(5, 3, -5, -3));
     }
     painter->restore();
 }
 
-bool DelegateAcoesCarrinho::editorEvent(QEvent *event, QAbstractItemModel *,
+bool DelegateAcoesCatalogo::editorEvent(QEvent *event, QAbstractItemModel *,
                                         const QStyleOptionViewItem &option, const QModelIndex &index)
 {
     if (event->type() == QEvent::MouseMove) {
         auto *mouse = static_cast<QMouseEvent *>(event);
         const Botao botao = botaoEm(option.rect, mouse->position().toPoint());
         const char *dicas[] = {
-            "Diminuir a quantidade",
-            "Aumentar a quantidade",
-            "Remover do carrinho"
+            "Adicionar ao carrinho",
+            "Ver produto"
         };
         if (botao == Nenhum)
             QToolTip::hideText();
@@ -74,7 +77,9 @@ bool DelegateAcoesCarrinho::editorEvent(QEvent *event, QAbstractItemModel *,
         return false;
     }
 
-    if (event->type() != QEvent::MouseButtonRelease)
+    if (event->type() == QEvent::MouseButtonDblClick)
+        return true;
+    if (event->type() != QEvent::MouseButtonPress)
         return false;
 
     auto *mouse = static_cast<QMouseEvent *>(event);
@@ -82,14 +87,13 @@ bool DelegateAcoesCarrinho::editorEvent(QEvent *event, QAbstractItemModel *,
         return false;
 
     switch (botaoEm(option.rect, mouse->position().toPoint())) {
-    case Menos:   emit menosClicado(index.row());   return true;
-    case Mais:    emit maisClicado(index.row());    return true;
-    case Remover: emit removerClicado(index.row()); return true;
-    default:      return false;
+    case Adicionar: emit adicionarClicado(index.row()); return true;
+    case Ver:       emit verClicado(index.row());       return true;
+    default:        return false;
     }
 }
 
-bool DelegateAcoesCarrinho::helpEvent(QHelpEvent *event, QAbstractItemView *view,
+bool DelegateAcoesCatalogo::helpEvent(QHelpEvent *event, QAbstractItemView *view,
                                       const QStyleOptionViewItem &option, const QModelIndex &index)
 {
     if (event->type() != QEvent::ToolTip)
@@ -97,9 +101,8 @@ bool DelegateAcoesCarrinho::helpEvent(QHelpEvent *event, QAbstractItemView *view
 
     const Botao botao = botaoEm(option.rect, event->pos());
     const char *dicas[] = {
-        "Diminuir a quantidade",
-        "Aumentar a quantidade",
-        "Remover do carrinho"
+        "Adicionar ao carrinho",
+        "Ver produto"
     };
     if (botao == Nenhum) {
         QToolTip::hideText();
