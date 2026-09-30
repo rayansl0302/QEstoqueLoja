@@ -507,20 +507,33 @@ Esc     Cancelar</string>
              </property>
             </widget>
            </item>
-           <item>
-            <spacer>
-             <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-           <item>
+       <item>
+        <widget class="QLabel" name="Lbl_Operador">
+         <property name="toolTip">
+          <string>Operador da sessão atual</string>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">font: 600 10pt &quot;Segoe UI&quot;; color: rgb(40,60,80); background-color: transparent; border: none;</string>
+         </property>
+         <property name="text">
+          <string>Operador: —</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer>
+         <property name="orientation">
+          <enum>Qt::Orientation::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
             <widget class="QPushButton" name="Btn_DesfazerRemocao">
              <property name="visible">
               <bool>false</bool>

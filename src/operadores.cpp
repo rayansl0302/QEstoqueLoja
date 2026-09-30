@@ -4,6 +4,7 @@
 #include <QInputDialog>
 #include <QHeaderView>
 #include <QLineEdit>
+#include "services/sessao_service.h"
 
 namespace {
 bool definirNovoPinGerente(QWidget *parent, Operador_service &serv)
@@ -51,13 +52,13 @@ void Operadores::atualizarTabela()
     model->setHeaderData(0, Qt::Horizontal, "ID");
     model->setHeaderData(1, Qt::Horizontal, "Nome");
     model->setHeaderData(2, Qt::Horizontal, "Ativo");
-    model->setHeaderData(3, Qt::Horizontal, "Bloqueado");
-    model->setHeaderData(4, Qt::Horizontal, "Erros de PIN");
+    model->setHeaderData(3, Qt::Horizontal, "Gerente");
+    model->setHeaderData(4, Qt::Horizontal, "Bloqueado");
+    model->setHeaderData(5, Qt::Horizontal, "Erros de PIN");
     ui->Tview_Operadores->setColumnHidden(0, true);
     ui->Tview_Operadores->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
-    ui->Tview_Operadores->resizeColumnToContents(2);
-    ui->Tview_Operadores->resizeColumnToContents(3);
-    ui->Tview_Operadores->resizeColumnToContents(4);
+    for (int col = 2; col <= 5; ++col)
+        ui->Tview_Operadores->resizeColumnToContents(col);
 }
 
 qlonglong Operadores::idSelecionado() const
@@ -89,6 +90,7 @@ void Operadores::limparCampos()
     ui->Ledit_Nome->clear();
     ui->Ledit_Pin->clear();
     ui->Ledit_PinConf->clear();
+    ui->Chk_Gerente->setChecked(false);
 }
 
 void Operadores::on_Btn_Cadastrar_clicked()
@@ -96,10 +98,17 @@ void Operadores::on_Btn_Cadastrar_clicked()
     QString pin;
     if (!pinsConferem(&pin))
         return;
-    const auto r = operadorServ.cadastrar(ui->Ledit_Nome->text(), pin);
+    auto r = operadorServ.cadastrar(ui->Ledit_Nome->text(), pin);
     if (!r.ok) {
         QMessageBox::warning(this, "Operadores", r.msg);
         return;
+    }
+    if (ui->Chk_Gerente->isChecked()) {
+        r = operadorServ.marcarGerente(r.id, true);
+        if (!r.ok) {
+            QMessageBox::warning(this, "Operadores",
+                "O operador foi cadastrado, mas não pode ser gerente agora:\n" + r.msg);
+        }
     }
     limparCampos();
     atualizarTabela();
@@ -167,6 +176,30 @@ void Operadores::on_Btn_AtivarDesativar_clicked()
     atualizarTabela();
 }
 
+void Operadores::on_Btn_Gerente_clicked()
+{
+    const qlonglong id = idSelecionado();
+    if (id <= 0) {
+        QMessageBox::information(this, "Operadores", "Selecione um operador na lista.");
+        return;
+    }
+    const OperadorDTO op = operadorServ.getPorId(id);
+    const bool novo = !op.gerente;
+    if (novo) {
+        const auto resp = QMessageBox::question(this, "Operadores",
+            QString("Marcar %1 como gerente?\n\n"
+                    "Gerentes podem abrir o histórico de caixas, o cadastro de operadores, "
+                    "as configurações e os relatórios gerenciais.").arg(op.nome),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (resp != QMessageBox::Yes)
+            return;
+    }
+    const auto r = operadorServ.marcarGerente(id, novo);
+    if (!r.ok)
+        QMessageBox::warning(this, "Operadores", r.msg);
+    atualizarTabela();
+}
+
 void Operadores::on_Btn_Fechar_clicked()
 {
     accept();
@@ -176,6 +209,16 @@ bool Operadores::autenticarGerente(QWidget *parent)
 {
     Operador_service serv;
     if (!serv.gerentePinDefinido()) {
+        // O PIN do gerente nasce junto com o primeiro operador. Se já existe cadastro e
+        // ninguém logou como gerente, definir o PIN aqui daria a qualquer operador o
+        // controle da loja — neste caso o caminho está fechado de propósito.
+        if (!serv.listar(false).isEmpty() && !Sessao_service::instancia()->logadoComPrivilegio()) {
+            QMessageBox::warning(parent, "PIN do gerente",
+                "O PIN do gerente ainda não foi definido nesta instalação.\n"
+                "Peça a um gerente para definí-lo.");
+            return false;
+        }
+
         QMessageBox::information(parent, "PIN do gerente",
             "Antes de gerenciar operadores é preciso definir o PIN do gerente.\n"
             "Ele protege o cadastro: só quem souber o PIN redefine ou desbloqueia o PIN dos operadores.\n"
@@ -189,8 +232,12 @@ bool Operadores::autenticarGerente(QWidget *parent)
         if (!ok)
             return false;
         const auto r = serv.validarGerentePin(pin);
-        if (r.ok)
+        if (r.ok) {
+            // sem isso o serviço recusaria o cadastro logo em seguida: operador comum que digitou
+            // o PIN do gerente fica elevado por um tempo, com registro na auditoria
+            Sessao_service::instancia()->concederElevacao(QStringLiteral("Cadastro de operadores / PIN do gerente"));
             return true;
+        }
         QMessageBox::warning(parent, "PIN do gerente", r.msg);
         if (r.msg.contains("bloqueado", Qt::CaseInsensitive))
             return false;

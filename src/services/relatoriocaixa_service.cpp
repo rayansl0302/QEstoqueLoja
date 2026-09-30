@@ -106,6 +106,18 @@ QString RelatorioCaixa_service::gerarHtml(const ResumoCaixaDTO &r, const QString
          "<td class='muted'>Sugerido pelo último fechamento</td><td class='muted'>" + dinheiro(c.trocoSugerido) +
          "</td></tr></table>";
 
+    // Quem mais operou neste caixa: sem esta linha o relatório escondia vendas de outro operador
+    if (!r.operadoresDaSessao.isEmpty()) {
+        h += "<h2>Operadores da sessão</h2><p class='muted'>"
+             "Caixa aberto por " + c.nomeOperador.toHtmlEscaped() + ". "
+             "Também registraram vendas ou movimentações:</p><table>"
+             "<tr><th>Operador</th><th class='n'>Registros</th></tr>";
+        for (const OperadorSessaoCaixaDTO &op : r.operadoresDaSessao)
+            h += "<tr><td>" + op.nome.toHtmlEscaped() + "</td><td class='n'>" +
+                 QString::number(op.quantidade) + "</td></tr>";
+        h += "</table>";
+    }
+
     h += "<h2>Vendas por forma de pagamento</h2><table><tr><th>Forma</th><th class='n'>Qtd</th><th class='n'>Total</th></tr>";
     for (const VendasFormaDTO &v : r.vendasPorForma)
         h += "<tr><td>" + v.formaPagamento.toHtmlEscaped() + (v.formaPagamento == "Prazo"
@@ -229,6 +241,12 @@ bool RelatorioCaixa_service::imprimirTermica(const ResumoCaixaDTO &r, QString *e
     d += linha(esquerdaDireita("Abertura:", formatarDataHora(c.abertoEm)));
     d += linha(esquerdaDireita("Fechamento:", c.status == "FECHADO" ? formatarDataHora(c.fechadoEm) : "aberto"));
     d += linha(esquerdaDireita("Troco inicial:", dinheiro(c.trocoInicial)));
+    if (!r.operadoresDaSessao.isEmpty()) {
+        d += linha(esquerdaDireita("Também operaram:",
+                                  QString("%1").arg(r.operadoresDaSessao.size())));
+        for (const OperadorSessaoCaixaDTO &op : r.operadoresDaSessao)
+            d += linha(QString("  - %1 (%2)").arg(op.nome.left(20)).arg(op.quantidade));
+    }
     d += linha(separador());
 
     d += EscPosComandos::bold(true);

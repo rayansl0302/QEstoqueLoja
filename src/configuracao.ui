@@ -385,11 +385,63 @@
             </property>
            </widget>
           </item>
-         </layout>
-        </widget>
-       </item>
-       <item>
-        <spacer name="verticalSpacer_fin">
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="gbSessaoOperador">
+            <property name="title">
+             <string>Sessão do operador</string>
+            </property>
+            <layout class="QFormLayout" name="formLayout_sessao">
+             <property name="fieldGrowthPolicy">
+              <enum>QFormLayout::FieldGrowthPolicy::ExpandingFieldsGrow</enum>
+             </property>
+             <item row="0" column="0" colspan="2">
+              <widget class="QLabel" name="Lbl_SessaoInfo">
+               <property name="text">
+                <string>Encerrar a sessão do operador após o tempo abaixo sem nenhum movimento no programa. Dois minutos antes do vencimento aparece um aviso no rodapé; qualquer atividade renova o prazo. A venda em andamento nunca é interrompida pelo timeout. Configuração vale só neste computador.</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0" colspan="2">
+              <widget class="QCheckBox" name="Chk_SessaoTimeout">
+               <property name="text">
+                <string>Encerrar a sessão por inatividade</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="Lbl_SessaoMinutos">
+               <property name="text">
+                <string>Minutos sem movimento:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QSpinBox" name="Spin_SessaoMinutos">
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>480</number>
+               </property>
+               <property name="value">
+                <number>30</number>
+               </property>
+               <property name="suffix">
+                <string> min</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <spacer name="verticalSpacer_fin">
          <property name="orientation">
           <enum>Qt::Orientation::Vertical</enum>
          </property>

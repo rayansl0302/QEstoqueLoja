@@ -90,6 +90,10 @@ struct ConfigDTO {
     // Caixa: diferença no fechamento até este valor OU esta porcentagem do esperado não exige justificativa
     double caixaToleranciaValor = 2.0;
     double caixaToleranciaPercent = 0.5;
+
+    // Sessão do operador: encerra a sessão após X minutos sem movimento (por máquina, config.ini)
+    bool caixaTimeoutAtivo = true;
+    int caixaTimeoutMinutos = 30;
 };
 
 #endif // CONFIG_DTO_H

@@ -1,3 +1,4 @@
+#include <QBoxLayout>
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include <QFile>
@@ -57,6 +58,13 @@
 #include "movimentacaocaixa.h"
 #include "historicocaixas.h"
 #include "operadores.h"
+#include "loginoperador.h"
+#include "logacessodialog.h"
+#include <QCloseEvent>
+#include "services/sessao_service.h"
+#include <QInputDialog>
+#include <QLineEdit>
+#include <QDebug>
 #include <QTimer>
 
 MainWindow::MainWindow(QWidget *parent)
@@ -165,6 +173,20 @@ MainWindow::MainWindow(QWidget *parent)
     montarMenuCaixa();
     atualizarIndicadorCaixa();
 
+    Sessao_service *sessao = Sessao_service::instancia();
+    connect(sessao, &Sessao_service::sessaoExpirada, this, &MainWindow::sessaoExpirada);
+    // aviso não-modal no rodapé: não interrompe a venda em andamento
+    connect(sessao, &Sessao_service::avisoTimeout, this, &MainWindow::mostrarAvisoTimeout);
+    // sessão bloqueada (venda aberta + inatividade), sessão invalidada (operador desativado...)
+    // e rodapé sempre em dia
+    connect(sessao, &Sessao_service::sessaoBloqueada, this, &MainWindow::sessaoBloqueada);
+    connect(sessao, &Sessao_service::sessaoInvalidada, this, &MainWindow::sessaoInvalidada);
+    connect(sessao, &Sessao_service::sessaoMudou, this, &MainWindow::atualizarIndicadorSessao);
+    // Cada tela de venda (PDV, nova venda na lista de Vendas) se registra em Sessao_service e
+    // informa se tem itens no carrinho: é isso que trava o logout e bloqueia o timeout.
+    // A sessão só existe depois que main.cpp rodar o login, então o timeout
+    // é armado em aplicarSessao(), não aqui.
+
     // ManifestadorDFe *manifestdfe = new ManifestadorDFe();
     // manifestdfe->consultarSePossivel();
 
@@ -172,6 +194,9 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    // grava a saída antes de derrubar a conexão do banco
+    if (Sessao_service::instancia()->ativa())
+        Sessao_service::instancia()->encerrarNoFechamento();
     delete ui;
 }
 
@@ -341,8 +366,10 @@ void MainWindow::on_Btn_Venda_clicked()
 }
 
 void MainWindow::on_Btn_Relatorios_clicked()
-{
-    relatorios *relatorios1 = new relatorios;
+    {
+     if (!exigirGerente(QStringLiteral("Os relatórios")))
+         return;
+     relatorios *relatorios1 = new relatorios;
     relatorios1->setWindowModality(Qt::ApplicationModal);
     relatorios1->show();
 }
@@ -447,8 +474,26 @@ void MainWindow::montarMenuCaixa()
     menuCaixa->addSeparator();
     menuCaixa->addAction("Histórico...", this, &MainWindow::historicoCaixaClicked);
     menuCaixa->addAction("Operadores...", this, &MainWindow::operadoresClicked);
+    // alterarPinGerente já confirma com o PIN atual antes de trocar
     menuCaixa->addAction("PIN do gerente...", this, [this]() { Operadores::alterarPinGerente(this); });
     ui->menuBar->insertMenu(ui->menuAjuda->menuAction(), menuCaixa);
+
+    // menu da sessão: troca de operador e encerramento do turno
+    QMenu *menuSessao = new QMenu("Sessão", this);
+    actionTrocarOperador = menuSessao->addAction("Trocar operador...", this, &MainWindow::trocarOperadorClicked);
+    actionSairSessao = menuSessao->addAction("Sair da conta", this, &MainWindow::sairSessaoClicked);
+    menuSessao->addSeparator();
+    menuSessao->addAction("Log de acesso...", this, &MainWindow::logAcessoClicked);
+    ui->menuBar->insertMenu(ui->menuAjuda->menuAction(), menuSessao);
+
+    lblSessao = new QLabel(this);
+    ui->statusbar->addPermanentWidget(lblSessao);
+    atualizarIndicadorSessao();
+
+    lblAvisoTimeout = new QLabel(this);
+    lblAvisoTimeout->setStyleSheet("color: rgb(180, 83, 9); font-weight: 600;");
+    lblAvisoTimeout->hide();
+    ui->statusbar->addWidget(lblAvisoTimeout);
 
     lblCaixaStatus = new QLabel(this);
     ui->statusbar->addPermanentWidget(lblCaixaStatus);
@@ -457,6 +502,287 @@ void MainWindow::montarMenuCaixa()
     QTimer *timerCaixa = new QTimer(this);
     connect(timerCaixa, &QTimer::timeout, this, &MainWindow::atualizarIndicadorCaixa);
     timerCaixa->start(15000);
+}
+
+void MainWindow::atualizarIndicadorSessao()
+{
+    if (!lblSessao)
+        return;
+    const SessaoDTO sessao = Sessao_service::instancia()->sessao();
+    if (sessao.nomeOperador.isEmpty()) {
+        lblSessao->setText(" Sem operador ");
+        lblSessao->setStyleSheet("color: rgb(185, 28, 28); font-weight: 600;");
+        return;
+    }
+    if (Sessao_service::instancia()->bloqueada()) {
+        lblSessao->setText(QString(" %1 — SESSÃO BLOQUEADA ").arg(sessao.nomeOperador));
+        lblSessao->setStyleSheet("color: rgb(180, 83, 9); font-weight: 700;");
+        return;
+    }
+    lblSessao->setText(QString(" %1%2 ")
+                           .arg(sessao.nomeOperador,
+                                sessao.gerente ? QStringLiteral(" (gerente)") : QString()));
+    lblSessao->setStyleSheet("color: rgb(30, 64, 175); font-weight: 600;");
+}
+
+void MainWindow::aplicarSessao()
+{
+    atualizarIndicadorSessao();
+    Sessao_service::instancia()->iniciarTimeout(configDTO.caixaTimeoutAtivo, configDTO.caixaTimeoutMinutos);
+}
+
+void MainWindow::setModoDesenvolvimento(bool ativo)
+{
+    modoDesenvolvimento = ativo;
+    if (!ativo || !ui->centralwidget->layout())
+        return;
+    QLabel *tarja = new QLabel(
+        QStringLiteral("MODO DESENVOLVIMENTO — login automático ativo, sem validação de PIN. "
+                       "Nunca use em produção."),
+        ui->centralwidget);
+    tarja->setObjectName(QStringLiteral("Lbl_ModoDesenvolvimento"));
+    tarja->setAlignment(Qt::AlignCenter);
+    tarja->setStyleSheet(
+        "background: rgb(180, 83, 9); color: white; font-weight: 700; padding: 4px;");
+    if (auto *box = qobject_cast<QBoxLayout *>(ui->centralwidget->layout()))
+        box->insertWidget(0, tarja);
+    else
+        tarja->setGeometry(0, 0, ui->centralwidget->width(), tarja->sizeHint().height());
+}
+
+bool MainWindow::exigirGerente(const QString &acao)
+{
+    Sessao_service *sessao = Sessao_service::instancia();
+    // a permissão pode ter mudado desde o login (rebaixado, desativado, PIN trocado)
+    sessao->revalidar();
+    if (!sessao->ativa())
+        return false;
+
+    // gerente com identidade no cadastro entra direto, sem digitar nada
+    if (sessao->sessao().gerente)
+        return true;
+
+    Operador_service serv;
+    if (!serv.gerentePinDefinido()) {
+        // com operadores já cadastrados, definir o PIN do gerente aqui daria a qualquer
+        // operador o controle da loja. O PIN só nasce junto com o primeiro cadastro.
+        if (!serv.listar(false).isEmpty()) {
+            QMessageBox::warning(this, "Acesso restrito",
+                acao + QStringLiteral(" é restrito a gerentes.\n"
+                                      "O PIN do gerente ainda não foi definido nesta instalação.\n"
+                                      "Peça a um gerente para definí-lo."));
+            return false;
+        }
+        QMessageBox::information(this, "Acesso restrito",
+            acao + QStringLiteral(" é restrito a gerentes.\n"
+                                  "Defina o PIN do gerente para liberar o acesso."));
+        return Operadores::autenticarGerente(this);
+    }
+
+    bool ok = false;
+    const QString pin = QInputDialog::getText(this, "PIN do gerente",
+        acao + QStringLiteral(" é restrito a gerentes.\nInforme o PIN do gerente:"),
+        QLineEdit::Password, QString(), &ok);
+    if (!ok)
+        return false;
+    const auto r = serv.validarGerentePin(pin);
+    if (!r.ok) {
+        QMessageBox::warning(this, "Acesso restrito", r.msg);
+        return false;
+    }
+    // fica registrado quem usou o PIN do gerente, quando e para quê
+    sessao->concederElevacao(acao);
+    return true;
+}
+
+void MainWindow::bloqueioParaTroca(QString *motivo) const
+{
+    Caixa_service caixaServ;
+    if (caixaServ.caixaAbertoNoTerminal().aberto()) {
+        *motivo = QStringLiteral("Há um caixa aberto neste terminal.\nFeche o caixa antes de sair da conta ou trocar de operador.");
+        return;
+    }
+    // qualquer tela de venda com itens no carrinho (PDV, nova venda na lista de Vendas...)
+    if (Sessao_service::instancia()->temVendaEmAndamento()) {
+        *motivo = QStringLiteral("Há uma venda em andamento.\nFinalize ou cancele a venda antes de sair da conta ou trocar de operador.");
+        return;
+    }
+    motivo->clear();
+}
+
+void MainWindow::encerrarSessao(bool sairDoPrograma)
+{
+    QString motivo;
+    bloqueioParaTroca(&motivo);
+    if (!motivo.isEmpty()) {
+        QMessageBox::warning(this, "Sessão", motivo);
+        return;
+    }
+
+    Sessao_service *sessao = Sessao_service::instancia();
+    if (sairDoPrograma) {
+        // sair da conta: a sessão acaba e o login volta (cancelar o login fecha o programa)
+        sessao->encerrar(QStringLiteral("LOGOUT"));
+        pedirLoginNovamente(true);
+        return;
+    }
+
+    // trocar de operador: a sessão de quem está logado só acaba se o novo login for aceito.
+    // Cancelar mantém tudo como estava (antes a sessão já tinha acabado e o programa ficava
+    // aberto, sem ninguém identificado).
+    bool cancelou = false;
+    const SessaoDTO nova = LoginOperador::executar(&cancelou, this);
+    if (cancelou || nova.nomeOperador.isEmpty())
+        return;
+    sessao->encerrar(QStringLiteral("TROCA_OPERADOR"));
+    iniciarSessao(nova);
+}
+
+bool MainWindow::pedirLoginNovamente(bool fecharSeCancelar)
+{
+    bool cancelou = false;
+    const SessaoDTO nova = LoginOperador::executar(&cancelou, this);
+    if (cancelou || nova.nomeOperador.isEmpty()) {
+        // sem sessão aceita o PDV não pode continuar: encerra o programa (e o PDV junto)
+        if (fecharSeCancelar)
+            encerrarPrograma();
+        return false;
+    }
+    return iniciarSessao(nova);
+}
+
+bool MainWindow::iniciarSessao(const SessaoDTO &nova)
+{
+    Sessao_service *sessao = Sessao_service::instancia();
+    QString erro;
+    sessao->abrir(nova, &erro);
+    if (!erro.isEmpty() || !sessao->ativa()) {
+        QMessageBox::critical(this, "Sessão do operador", erro.isEmpty() ? QStringLiteral("Não foi possível abrir a sessão.") : erro);
+        encerrarPrograma();
+        return false;
+    }
+    sessao->iniciarTimeout(configDTO.caixaTimeoutAtivo, configDTO.caixaTimeoutMinutos);
+    atualizarIndicadorSessao();
+    return true;
+}
+
+void MainWindow::encerrarPrograma()
+{
+    // O PDV é uma janela independente: fechar só esta janela deixaria o PDV aberto e utilizável
+    // sem ninguém identificado. O rascunho da venda em andamento já está salvo.
+    saindoDoPrograma = true;
+    QApplication::quit();
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    if (!saindoDoPrograma && Sessao_service::instancia()->temVendaEmAndamento()) {
+        const auto resp = QMessageBox::question(this, "Sair",
+            QStringLiteral("Há uma venda em andamento.\n"
+                           "O rascunho fica salvo e será oferecido na próxima vez. Sair mesmo assim?"),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (resp != QMessageBox::Yes) {
+            event->ignore();
+            return;
+        }
+    }
+    saindoDoPrograma = true;
+    event->accept();
+    QApplication::quit();
+}
+
+void MainWindow::mostrarAvisoTimeout(int segundosRestantes)
+{
+    if (!lblAvisoTimeout)
+        return;
+    if (segundosRestantes <= 0) {
+        lblAvisoTimeout->hide();
+        return;
+    }
+    const int minutos = qMax(1, segundosRestantes / 60);
+    lblAvisoTimeout->setText(QStringLiteral(" Sessão expira em %1 min — mova o mouse ou pressione uma tecla para renovar ")
+                                 .arg(minutos));
+    lblAvisoTimeout->show();
+}
+
+void MainWindow::trocarOperadorClicked()
+{
+    encerrarSessao(false);
+}
+
+void MainWindow::sairSessaoClicked()
+{
+    const auto resp = QMessageBox::question(this, "Sair da conta",
+        QStringLiteral("Sair da conta de %1?\nO login será pedido de novo.")
+            .arg(Sessao_service::instancia()->nomeOperador()),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    if (resp != QMessageBox::Yes)
+        return;
+    encerrarSessao(true);
+}
+
+void MainWindow::sessaoExpirada()
+{
+    // O serviço já encerrou a sessão (TIMEOUT) antes de avisar: abrir o novo login aqui dentro é
+    // seguro. Não vale o bloqueio de caixa aberto: quem ficou parado pode ter deixado o caixa
+    // aberto, e recusar o login deixaria o turno sem ninguém para fechá-lo.
+    atualizarIndicadorSessao();
+    if (lblAvisoTimeout)
+        lblAvisoTimeout->hide();
+
+    QMessageBox::information(this, "Sessão encerrada",
+        QStringLiteral("A sessão expirou por falta de movimento.\nEntre novamente para continuar."));
+
+    pedirLoginNovamente(true);
+}
+
+void MainWindow::sessaoBloqueada()
+{
+    // Venda em andamento + inatividade: a sessão não é encerrada (a venda fica intacta), mas só
+    // volta com o PIN. Os diálogos abaixo são modais para a aplicação inteira, então o PDV
+    // não pode ser usado por trás.
+    Sessao_service *sessao = Sessao_service::instancia();
+    atualizarIndicadorSessao();
+    const QString nome = sessao->nomeOperador();
+
+    while (sessao->ativa() && sessao->bloqueada()) {
+        bool ok = false;
+        const QString pin = QInputDialog::getText(this, "Sessão bloqueada",
+            QStringLiteral("A sessão de %1 foi bloqueada por inatividade, com uma venda em andamento.\n"
+                           "Informe o PIN de %1 (ou o PIN do gerente) para continuar:").arg(nome),
+            QLineEdit::Password, QString(), &ok);
+        if (!ok) {
+            const auto resp = QMessageBox::question(this, "Sessão bloqueada",
+                QStringLiteral("Sair do programa?\nA venda em andamento fica salva como rascunho."),
+                QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+            if (resp == QMessageBox::Yes) {
+                encerrarPrograma();
+                return;
+            }
+            continue;
+        }
+        const auto r = sessao->desbloquear(pin);
+        if (!r.ok)
+            QMessageBox::warning(this, "Sessão bloqueada", r.msg);
+    }
+    atualizarIndicadorSessao();
+}
+
+void MainWindow::sessaoInvalidada(const QString &motivo)
+{
+    // a sessão já foi encerrada pelo serviço (operador desativado/bloqueado, PIN geral trocado)
+    atualizarIndicadorSessao();
+    QMessageBox::warning(this, "Sessão encerrada",
+        motivo + QStringLiteral("\nEntre novamente para continuar."));
+    pedirLoginNovamente(true);
+}
+
+void MainWindow::logAcessoClicked()
+{
+    if (!exigirGerente(QStringLiteral("O log de acesso")))
+        return;
+    LogAcessoDialog dlg(this);
+    dlg.exec();
 }
 
 void MainWindow::atualizarIndicadorCaixa()
@@ -523,13 +849,15 @@ void MainWindow::suprimentoClicked()
 
 void MainWindow::historicoCaixaClicked()
 {
+    if (!exigirGerente(QStringLiteral("O histórico de caixas")))
+        return;
     HistoricoCaixas dlg(this);
     dlg.exec();
 }
 
 void MainWindow::operadoresClicked()
 {
-    if (!Operadores::autenticarGerente(this))
+    if (!exigirGerente(QStringLiteral("O cadastro de operadores")))
         return;
     Operadores dlg(this);
     dlg.exec();
@@ -611,13 +939,20 @@ void MainWindow::on_Tview_Produtos_customContextMenuRequested(const QPoint &pos)
 }
 
 void MainWindow::on_actionConfig_triggered()
-{
-    Configuracao *configuracao = new Configuracao();
+    {
+     if (!exigirGerente(QStringLiteral("As configurações")))
+         return;
+     Configuracao *configuracao = new Configuracao();
     configuracao->show();
     connect(configuracao, &Configuracao::alterouConfig, this,
             &MainWindow::atualizarConfigAcbr);
     connect(configuracao, &Configuracao::alterouConfig, this,
             &MainWindow::atualizarConfigDTO);
+    // o timeout é local desta máquina: vale para a sessão atual, sem esperar novo login
+    connect(configuracao, &Configuracao::alterouConfig, this, [this]() {
+        configDTO = confServ->carregarTudo();
+        aplicarSessao();
+    });
 }
 void MainWindow::atualizarConfigDTO(){
     configDTO = confServ->carregarTudo();

@@ -34,6 +34,7 @@
 #include "infojanelaprod.h"
 #include "../services/Produto_service.h"
 #include "services/config_service.h"
+#include "services/sessao_service.h"
 
 namespace {
 // Coluna extra "Ações" em cima do QSqlQueryModel do catálogo, sem alterar o SELECT.
@@ -128,6 +129,14 @@ venda::venda(QWidget *parent) :
     ui(new Ui::venda)
 {
     ui->setupUi(this);
+
+    // enquanto houver itens no carrinho a sessão não pode ser trocada nem expirar (só bloquear)
+    Sessao_service::instancia()->registrarTelaDeVenda(this, [this]() { return carrinhoComItens(); });
+
+    // quem está vendendo fica visível na tela: a venda é gravada com o id desta sessão
+    connect(Sessao_service::instancia(), &Sessao_service::sessaoMudou,
+            this, [this]() { atualizarIndicadorOperador(); });
+    atualizarIndicadorOperador();
 
     prodServ.listarProdutos(modeloProdutos);
     modeloProdutos->setHeaderData(0, Qt::Horizontal, tr("ID"));
@@ -702,6 +711,11 @@ void venda::terminarPagamento()
     if (vendaFinalizada)
         return;
 
+    // Enquanto a venda não fecha, a sessão não expira e a troca de operador fica travada.
+    // Nas falhas a venda continua aberta, então o bloqueio é mantido; só reiniciarVenda()
+    // (sucesso, cancelamento ou rascunho descartado) devolve a liberdade.
+    Sessao_service::instancia()->definirVendaEmAndamento(true);
+
     QString troco          = ui->Lbl_Troco->text();
     QString recebido       = ui->Ledit_Recebido->text();
     QString forma          = ui->CBox_FormaPagamento->currentText();
@@ -733,6 +747,8 @@ void venda::terminarPagamento()
     newVenda.troco          = portugues.toDouble(troco);
     newVenda.valorFinal     = portugues.toDouble(valor_final);
     newVenda.valorRecebido  = portugues.toDouble(recebido);
+    // a venda fica amarrada à sessão do operador logado, não ao dono do caixa
+    newVenda.idOperadorSessao = Sessao_service::instancia()->idOperador();
 
     if(idClienteAtual > 0)
         CLIENTE = cliServ.getClienteByID(idClienteAtual);
@@ -920,6 +936,8 @@ void venda::definirClientePadrao()
 void venda::reiniciarVenda(bool manterRascunho)
 {
     vendaFinalizada = false;
+    // a venda terminou (ou foi abandonada): libera sessão e troca de operador
+    Sessao_service::instancia()->definirVendaEmAndamento(false);
     modeloSelecionados->removeRows(0, modeloSelecionados->rowCount());
     temRemovido = false;
     desfazerTimer->stop();
@@ -984,7 +1002,20 @@ void venda::atualizarListaCliente()
     }
 }
 
-venda::~venda() { delete ui; }
+void venda::atualizarIndicadorOperador()
+{
+    const SessaoDTO sessao = Sessao_service::instancia()->sessao();
+    ui->Lbl_Operador->setText(sessao.nomeOperador.isEmpty()
+                                  ? QStringLiteral("Operador: —")
+                                  : QStringLiteral("Operador: %1").arg(sessao.nomeOperador));
+}
+
+venda::~venda() {
+    // o PDV pode ser fechado no meio do pagamento: sem isso a sessão ficaria travada
+    Sessao_service::instancia()->definirVendaEmAndamento(false);
+    Sessao_service::instancia()->removerTelaDeVenda(this);
+    delete ui;
+}
 
 // ─── Rascunho ────────────────────────────────────────────────────────────────
 

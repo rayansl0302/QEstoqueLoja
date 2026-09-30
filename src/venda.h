@@ -37,6 +37,10 @@ public:
     QLocale portugues;
     QIcon deletar;
 
+    // Carrinho com itens: a sessão não pode expirar enquanto o operador monta a venda.
+    // (As páginas de cliente e pagamento só são alcançáveis com o carrinho cheio.)
+    bool carrinhoComItens() const { return modeloSelecionados->rowCount() > 0; }
+
 protected:
     void handleSelectionChangeProdutos(const QItemSelection &selected, const QItemSelection &deselected);
     void keyPressEvent(QKeyEvent *event) override;
@@ -106,6 +110,7 @@ private:
 
     QString getIdProdSelected();
     void verProd();
+    void atualizarIndicadorOperador();
     void irParaPagina(int pagina);
     void configurarPaginaPagamento();
     void configurarPaginaNF();

@@ -70,6 +70,9 @@ Configuracao::Configuracao(QWidget *parent)
     ui->Ledt_credito->setText(portugues.toString(configDTO.taxaCreditoFinanceiro));
     ui->Ledt_CaixaToleranciaValor->setText(portugues.toString(configDTO.caixaToleranciaValor, 'f', 2));
     ui->Ledt_CaixaToleranciaPercent->setText(portugues.toString(configDTO.caixaToleranciaPercent, 'f', 2));
+    ui->Chk_SessaoTimeout->setChecked(configDTO.caixaTimeoutAtivo);
+    ui->Spin_SessaoMinutos->setValue(qMax(1, configDTO.caixaTimeoutMinutos));
+    ui->Spin_SessaoMinutos->setEnabled(configDTO.caixaTimeoutAtivo);
     ui->CheckBox_emitNf->setChecked(configDTO.emitNfFiscal);
     ui->CheckBox_usarIbs->setChecked(configDTO.usarIbsFiscal);
     ui->Ledit_NNfHomolog->setText(QString::number(configDTO.nnfHomologFiscal));
@@ -184,6 +187,8 @@ void Configuracao::on_Btn_Aplicar_clicked()
     }
     dtoInserir.caixaToleranciaValor = tolValor;
     dtoInserir.caixaToleranciaPercent = tolPercent;
+    dtoInserir.caixaTimeoutAtivo = ui->Chk_SessaoTimeout->isChecked();
+    dtoInserir.caixaTimeoutMinutos = ui->Spin_SessaoMinutos->value();
     dtoInserir.regimeTribFiscal = ui->CBox_Opcao->currentIndex();
     dtoInserir.tpAmbFiscal = ui->CBox_Tpamp->currentIndex();
     dtoInserir.idCscFiscal = ui->Ledit_Idcsc->text().trimmed();
@@ -255,6 +260,11 @@ void Configuracao::on_Btn_Aplicar_clicked()
     this->close();
 }
 
+
+void Configuracao::on_Chk_SessaoTimeout_toggled(bool checked)
+{
+    ui->Spin_SessaoMinutos->setEnabled(checked);
+}
 
 void Configuracao::on_Btn_Cancelar_clicked()
 {

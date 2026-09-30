@@ -343,9 +343,10 @@ qlonglong Vendas_repository::inserir(VendasDTO venda){
 
     QSqlQuery query(db);
     query.prepare("INSERT INTO vendas2 (cliente, total, data_hora, forma_pagamento, "
-                  "valor_recebido, troco, taxa, valor_final, desconto, id_cliente, esta_pago, id_caixa) "
+                  "valor_recebido, troco, taxa, valor_final, desconto, id_cliente, esta_pago, id_caixa, "
+                  "id_operador_sessao) "
                   "VALUES (:cliente, :total, :datahora, :formapag, :recebido, :troco, :taxa, "
-                  ":valorfinal, :desconto, :idcliente, :estapago, :idcaixa)");
+                  ":valorfinal, :desconto, :idcliente, :estapago, :idcaixa, :idoperadorsessao)");
 
     query.bindValue(":cliente", venda.clienteNome);
     query.bindValue(":total", venda.total);
@@ -360,6 +361,10 @@ qlonglong Vendas_repository::inserir(VendasDTO venda){
     query.bindValue(":estapago", venda.estaPago);
     query.bindValue(":idcaixa", venda.idCaixa > 0 ? QVariant(venda.idCaixa)
                                                   : QVariant(QMetaType(QMetaType::LongLong)));
+    // -1 (sem sessão) vira NULL; 0 continua sendo o gerente do PIN geral, que é uma sessão válida
+    query.bindValue(":idoperadorsessao", venda.idOperadorSessao >= 0
+                                              ? QVariant(venda.idOperadorSessao)
+                                              : QVariant(QMetaType(QMetaType::LongLong)));
 
     if(!query.exec()){
         qDebug() << "Query não executou inserir venda()" << query.lastError().text();

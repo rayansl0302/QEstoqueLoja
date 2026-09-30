@@ -1,6 +1,7 @@
 #include "aberturacaixa.h"
 #include "ui_aberturacaixa.h"
 #include "operadores.h"
+#include "services/sessao_service.h"
 #include <QMessageBox>
 #include <QDoubleValidator>
 
@@ -38,7 +39,13 @@ void AberturaCaixa::carregarOperadores()
     for (const OperadorDTO &op : operadorServ.listar(true))
         ui->CBox_Operador->addItem(op.nome, op.id);
 
-    const int idx = ui->CBox_Operador->findData(selecionado);
+    // quem está logado abre o próprio caixa: só a troca fica na mão do operador
+    qlonglong inicial = selecionado;
+    const qlonglong idSessao = Sessao_service::instancia()->idOperador();
+    if (ui->CBox_Operador->findData(idSessao) >= 0)
+        inicial = idSessao;
+
+    const int idx = ui->CBox_Operador->findData(inicial);
     if (idx >= 0)
         ui->CBox_Operador->setCurrentIndex(idx);
 

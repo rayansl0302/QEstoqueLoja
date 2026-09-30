@@ -142,7 +142,8 @@ double Caixa_repository::getDinheiroInformadoUltimoFechamento(const QString &ter
 }
 
 bool Caixa_repository::fechar(qlonglong idCaixa, const QString &observacao,
-                              const QList<FechamentoFormaDTO> &formas, QString *erro)
+                              const QList<FechamentoFormaDTO> &formas, QString *erro,
+                              int vendasConferidas, int movimentacoesConferidas)
 {
     if (!DatabaseConnection_service::open()) {
         setErro(erro, "Banco de dados indisponível.");
@@ -164,6 +165,30 @@ bool Caixa_repository::fechar(qlonglong idCaixa, const QString &observacao,
                                                   : "Este caixa já está fechado.");
         db.rollback();
         return false;
+    }
+
+    // o caixa já está FECHADO nesta transação: daqui em diante ninguém mais lança nele.
+    // Conferir agora o que as contas usaram evita fechar com uma venda que entrou no meio.
+    if (vendasConferidas >= 0 || movimentacoesConferidas >= 0) {
+        QSqlQuery conta(db);
+        conta.prepare("SELECT (SELECT COUNT(*) FROM vendas2 WHERE id_caixa = :id), "
+                      "(SELECT COUNT(*) FROM movimentacoes_caixa WHERE id_caixa = :id2)");
+        conta.bindValue(":id", idCaixa);
+        conta.bindValue(":id2", idCaixa);
+        if (!conta.exec() || !conta.next()) {
+            setErro(erro, conta.lastError().text());
+            db.rollback();
+            return false;
+        }
+        const int vendasAgora = conta.value(0).toInt();
+        const int movAgora = conta.value(1).toInt();
+        if ((vendasConferidas >= 0 && vendasAgora != vendasConferidas) ||
+            (movimentacoesConferidas >= 0 && movAgora != movimentacoesConferidas)) {
+            setErro(erro, "Houve movimentação neste caixa durante o fechamento. "
+                          "Confira os valores esperados e feche novamente.");
+            db.rollback();
+            return false;
+        }
     }
 
     for (const FechamentoFormaDTO &f : formas) {
@@ -227,8 +252,8 @@ qlonglong Caixa_repository::inserirMovimentacao(const MovimentacaoCaixaDTO &mov,
     }
     QSqlQuery query(db);
     query.prepare("INSERT INTO movimentacoes_caixa (id_caixa, tipo, valor, forma_pagamento, motivo, id_venda, "
-                  "id_entrada_venda, id_operador, estornado, data_hora) "
-                  "VALUES (:caixa, :tipo, :valor, :forma, :motivo, :venda, :entrada, :op, :est, :agora)");
+                  "id_entrada_venda, id_operador, id_operador_sessao, estornado, data_hora) "
+                  "VALUES (:caixa, :tipo, :valor, :forma, :motivo, :venda, :entrada, :op, :opsessao, :est, :agora)");
     query.bindValue(":caixa", mov.idCaixa);
     query.bindValue(":tipo", mov.tipo);
     query.bindValue(":valor", mov.valor);
@@ -239,6 +264,9 @@ qlonglong Caixa_repository::inserirMovimentacao(const MovimentacaoCaixaDTO &mov,
     query.bindValue(":entrada", mov.idEntradaVenda > 0 ? QVariant(mov.idEntradaVenda)
                                                        : QVariant(QMetaType(QMetaType::LongLong)));
     query.bindValue(":op", mov.idOperador > 0 ? QVariant(mov.idOperador) : QVariant(QMetaType(QMetaType::LongLong)));
+    // quem praticou o movimento e o operador logado; id_operador continua sendo o dono do caixa
+    query.bindValue(":opsessao", mov.idOperadorSessao >= 0 ? QVariant(mov.idOperadorSessao)
+                                                          : QVariant(QMetaType(QMetaType::LongLong)));
     query.bindValue(":est", mov.estornado);
     query.bindValue(":agora", QDateTime::currentDateTime());
     if (!query.exec()) {
@@ -360,8 +388,49 @@ QList<FechamentoFormaDTO> Caixa_repository::getFechamento(qlonglong idCaixa)
     return lista;
 }
 
-int Caixa_repository::contarRecebimentosEmCaixaFechado(qlonglong idVenda)
+QList<OperadorSessaoCaixaDTO> Caixa_repository::operadoresDaSessao(qlonglong idCaixa)
 {
+    QList<OperadorSessaoCaixaDTO> lista;
+    if (idCaixa <= 0 || !DatabaseConnection_service::open())
+        return lista;
+
+    // vendas e movimentacoes apontando para o mesmo id_operador_sessao, contando registros.
+    // Estorno não conta: é a desfazer de uma operação, não uma operação nova de quem estornou.
+    const QString sql =
+        "SELECT s.id_operador_sessao AS id_op, "
+        "       COALESCE(o.nome, 'Gerente (PIN geral)') AS nome, "
+        "       SUM(s.quantidade) AS quantidade "
+        "FROM ("
+        "  SELECT id_operador_sessao, 1 AS quantidade FROM vendas2 "
+        "   WHERE id_caixa = :id AND id_operador_sessao IS NOT NULL "
+        "  UNION ALL "
+        "  SELECT id_operador_sessao, 1 AS quantidade FROM movimentacoes_caixa "
+        "   WHERE id_caixa = :id2 AND id_operador_sessao IS NOT NULL "
+        "     AND (estornado = FALSE OR estornado IS NULL) "
+        ") s "
+        "LEFT JOIN operadores o ON o.id = s.id_operador_sessao "
+        "GROUP BY s.id_operador_sessao, nome "
+        "ORDER BY quantidade DESC, nome";
+
+    QSqlQuery query(db);
+    query.prepare(sql);
+    query.bindValue(":id", idCaixa);
+    query.bindValue(":id2", idCaixa);
+    if (!query.exec()) {
+        qDebug() << "operadoresDaSessao falhou:" << query.lastError().text();
+        return lista;
+    }
+    while (query.next()) {
+        OperadorSessaoCaixaDTO op;
+        op.id = query.value("id_op").toLongLong();
+        op.nome = query.value("nome").toString();
+        op.quantidade = query.value("quantidade").toLongLong();
+        lista << op;
+    }
+    return lista;
+}
+
+int Caixa_repository::contarRecebimentosEmCaixaFechado(qlonglong idVenda){
     if (idVenda <= 0 || !DatabaseConnection_service::open())
         return 0;
     QSqlQuery query(db);

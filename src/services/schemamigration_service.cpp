@@ -1674,6 +1674,164 @@ SchemaMigration_service::Resultado SchemaMigration_service::update() {
             qDebug() << "Migracao para versao 15 concluida.";
             break;
         }
+        case 15:
+        {
+            // versao 16: sessao de operador do sistema inteiro.
+            //
+            // Antes da 16 existia um unico conceito de "operador": o dono do caixa (caixas.id_operador),
+            // replicado em movimentacoes_caixa.id_operador. Com a sessao ativa, quem executa a acao pode
+            // ser outro (ex.: gerente logado vendendo no caixa aberto pelo operador A), entao o dono do
+            // caixa e o operador da sessao passam a ser gravados separadamente:
+            //   - id_operador        -> mantem o significado atual (dono do caixa / quem abriu)
+            //   - id_operador_sessao -> quem estava logado quando a acao aconteceu
+            // O backfill abaixo reproduz o historico com essa unica identidade que existia ate aqui.
+            //
+            // Alem disso entra o log de sessoes (auditoria de entrada/saida) e a marcacao de gerente em
+            // operadores, que antes vivia apenas como PIN solto em config_caixa, sem identidade.
+            if (!db.transaction()) {
+                qDebug() << "Error: unable to start transaction";
+                // nao pode seguir: sem transacao o DDL pode ficar pela metade e o
+                // programa continuaria usando colunas que nunca chegaram a existir
+                return {false, SchemaErro::ErroMigracao, "Erro ao iniciar migracao 16 (sessao)", dbSchemaVersion};
+            }
+            qDebug() << "Atualizando para versao 16: sessao de operador, log de sessoes e gerente.";
+
+            const bool pg = DatabaseConnection_service::isPostgres();
+            const QString pk = pg ? "SERIAL PRIMARY KEY" : "INTEGER PRIMARY KEY AUTOINCREMENT";
+            const QString ts = pg ? "TIMESTAMP" : "DATETIME";
+            const QString addCol = pg ? "ADD COLUMN IF NOT EXISTS" : "ADD COLUMN";
+
+            const QStringList comandos = {
+                // ids de operador comecam em 1 por SERIAL/AUTOINCREMENT: o id 0 fica reservado
+                // para a linha ficticia "Entrar como gerente" do login (kOperadorGerenteId).
+                "ALTER TABLE operadores " + addCol + " gerente BOOLEAN NOT NULL DEFAULT FALSE",
+
+                "CREATE TABLE IF NOT EXISTS sessoes_operador ("
+                "  id " + pk + ","
+                "  id_operador INTEGER,"
+                "  nome_operador TEXT NOT NULL,"
+                "  gerente BOOLEAN NOT NULL DEFAULT FALSE,"
+                "  terminal TEXT NOT NULL,"
+                "  entrada_em " + ts + " NOT NULL,"
+                "  saida_em " + ts + ","
+                "  motivo_saida TEXT,"
+                "  id_caixa_no_momento INTEGER)",
+
+                "CREATE INDEX IF NOT EXISTS idx_sessoes_abertas ON sessoes_operador(saida_em, terminal)",
+
+                "ALTER TABLE vendas2 " + addCol + " id_operador_sessao INTEGER",
+                "ALTER TABLE movimentacoes_caixa " + addCol + " id_operador_sessao INTEGER",
+                "ALTER TABLE entradas_vendas " + addCol + " id_operador_sessao INTEGER"
+            };
+
+            for (const QString &sql : comandos) {
+                QSqlQuery query(db);
+                if (!query.exec(sql)) {
+                    // SQLite nao tem ADD COLUMN IF NOT EXISTS: coluna ja existente nao e erro
+                    const QString texto = query.lastError().text();
+                    if (!pg && sql.startsWith("ALTER TABLE") &&
+                        texto.contains("duplicate column", Qt::CaseInsensitive))
+                        continue;
+                    qDebug() << "Erro migracao 16:" << texto;
+                    db.rollback();
+                    return {false, SchemaErro::ErroMigracao, "Erro na migracao 16 (sessao)", dbSchemaVersion};
+                }
+            }
+
+            // backfill: antes da 16 o operador da sessao era o proprio dono do caixa
+            const QStringList backfills = {
+                "UPDATE movimentacoes_caixa SET id_operador_sessao = id_operador WHERE id_operador IS NOT NULL",
+                // vendas2 nao tem id_operador: o dono do caixa vem pelo id_caixa
+                "UPDATE vendas2 SET id_operador_sessao = "
+                "(SELECT c.id_operador FROM caixas c WHERE c.id = vendas2.id_caixa) WHERE id_caixa IS NOT NULL",
+                // entradas_vendas guarda o caixa (desde a migracao 14): o dono do caixa e o operador da epoca
+                "UPDATE entradas_vendas SET id_operador_sessao = "
+                "(SELECT c.id_operador FROM caixas c WHERE c.id = entradas_vendas.id_caixa) WHERE id_caixa IS NOT NULL",
+                // entradas sem caixa, mas com a movimentacao RECEBIMENTO ligada a elas
+                "UPDATE entradas_vendas SET id_operador_sessao = "
+                "(SELECT m.id_operador FROM movimentacoes_caixa m "
+                " WHERE m.id_entrada_venda = entradas_vendas.id AND m.tipo = 'RECEBIMENTO' ORDER BY m.id LIMIT 1) "
+                "WHERE id_operador_sessao IS NULL AND EXISTS (SELECT 1 FROM movimentacoes_caixa m "
+                "WHERE m.id_entrada_venda = entradas_vendas.id AND m.tipo = 'RECEBIMENTO')"
+            };
+            for (const QString &sql : backfills) {
+                QSqlQuery query(db);
+                if (!query.exec(sql)) {
+                    // Falha no backfill NAO pode virar "migrado": o historico ficaria pela metade para
+                    // sempre. Desfaz tudo; na proxima abertura a migracao roda de novo do zero.
+                    qDebug() << "Erro no backfill da migracao 16:" << query.lastError().text() << "SQL:" << sql;
+                    db.rollback();
+                    return {false, SchemaErro::ErroMigracao, "Erro no backfill da migracao 16 (sessao)", dbSchemaVersion};
+                }
+            }
+
+            if (!setSchemaVersion(16)) {
+                qDebug() << "Erro ao gravar versao 16";
+                db.rollback();
+                return {false, SchemaErro::ErroMigracao, "Erro ao gravar versao 16", dbSchemaVersion};
+            }
+            if (!db.commit()) {
+                qDebug() << "Erro ao dar commit:" << db.lastError().text();
+                db.rollback();
+                return {false, SchemaErro::ErroMigracao, "Erro ao confirmar migracao 16", dbSchemaVersion};
+            }
+            dbSchemaVersion = 16;
+            qDebug() << "Migracao para versao 16 concluida.";
+            break;
+        }
+        case 16:
+        {
+            // versao 17: auditoria de acoes sensiveis (uso do PIN do gerente, bloqueio/desbloqueio de
+            // sessao, sessao invalidada, permissao alterada) e indices das colunas de operador.
+            if (!db.transaction()) {
+                qDebug() << "Error: unable to start transaction";
+                return {false, SchemaErro::ErroMigracao, "Erro ao iniciar migracao 17 (auditoria)", dbSchemaVersion};
+            }
+            qDebug() << "Atualizando para versao 17: auditoria_acesso e indices de operador.";
+
+            const bool pg17 = DatabaseConnection_service::isPostgres();
+            const QString pk17 = pg17 ? "SERIAL PRIMARY KEY" : "INTEGER PRIMARY KEY AUTOINCREMENT";
+            const QString ts17 = pg17 ? "TIMESTAMP" : "DATETIME";
+
+            const QStringList comandos17 = {
+                "CREATE TABLE IF NOT EXISTS auditoria_acesso ("
+                "  id " + pk17 + ","
+                "  data_hora " + ts17 + " NOT NULL,"
+                "  id_operador_sessao INTEGER,"
+                "  nome_operador TEXT,"
+                "  terminal TEXT NOT NULL,"
+                "  acao TEXT NOT NULL,"
+                "  detalhe TEXT)",
+                "CREATE INDEX IF NOT EXISTS idx_auditoria_data ON auditoria_acesso(data_hora)",
+                "CREATE INDEX IF NOT EXISTS idx_vendas2_operador_sessao ON vendas2(id_operador_sessao)",
+                "CREATE INDEX IF NOT EXISTS idx_mov_operador_sessao ON movimentacoes_caixa(id_operador_sessao)",
+                "CREATE INDEX IF NOT EXISTS idx_entradas_operador_sessao ON entradas_vendas(id_operador_sessao)",
+                "CREATE INDEX IF NOT EXISTS idx_entradas_vendas_caixa ON entradas_vendas(id_caixa)",
+                "CREATE INDEX IF NOT EXISTS idx_sessoes_entrada ON sessoes_operador(entrada_em)"
+            };
+            for (const QString &sql : comandos17) {
+                QSqlQuery query(db);
+                if (!query.exec(sql)) {
+                    qDebug() << "Erro migracao 17:" << query.lastError().text() << "SQL:" << sql;
+                    db.rollback();
+                    return {false, SchemaErro::ErroMigracao, "Erro na migracao 17 (auditoria)", dbSchemaVersion};
+                }
+            }
+
+            if (!setSchemaVersion(17)) {
+                qDebug() << "Erro ao gravar versao 17";
+                db.rollback();
+                return {false, SchemaErro::ErroMigracao, "Erro ao gravar versao 17", dbSchemaVersion};
+            }
+            if (!db.commit()) {
+                qDebug() << "Erro ao dar commit:" << db.lastError().text();
+                db.rollback();
+                return {false, SchemaErro::ErroMigracao, "Erro ao confirmar migracao 17", dbSchemaVersion};
+            }
+            dbSchemaVersion = 17;
+            qDebug() << "Migracao para versao 17 concluida.";
+            break;
+        }
 
         }
     }

@@ -28,6 +28,7 @@ private slots:
     void on_Btn_RedefinirPin_clicked();
     void on_Btn_Desbloquear_clicked();
     void on_Btn_AtivarDesativar_clicked();
+    void on_Btn_Gerente_clicked();
     void on_Btn_Fechar_clicked();
 
 private:

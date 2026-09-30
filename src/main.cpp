@@ -1,13 +1,54 @@
     #include "mainwindow.h"
+    #include "loginoperador.h"
+    #include "operadores.h"
 
     #include <QApplication>
     #include <QLocale>
+    #include <QMessageBox>
     #include <QTranslator>
     #include <qicon.h>
     #include <QStyleFactory>
     #include <QGuiApplication>
     #include <QTimer>
     #include <QMetaObject>
+    #include <QLockFile>
+    #include <QDir>
+    #include <QDebug>
+
+    #include "services/operador_service.h"
+    #include "services/sessao_service.h"
+
+    namespace {
+
+    // Entrada sem PIN, só para gerar telas em desenvolvimento.
+    // Ignorada em Release mesmo com a variável de ambiente presente.
+    bool autologinDesenvolvimento()
+    {
+    #if defined(QEL_MODO_DESENVOLVIMENTO)
+        return qEnvironmentVariableIntValue("QESTOQUELOJA_DEV_AUTOLOGIN") == 1;
+    #else
+        return false;
+    #endif
+    }
+
+    SessaoDTO sessaoDesenvolvimento()
+    {
+        SessaoDTO sessao;
+        const QList<OperadorDTO> ativos = Operador_service().listar(true);
+        if (!ativos.isEmpty()) {
+            sessao.idOperador = ativos.first().id;
+            sessao.nomeOperador = ativos.first().nome;
+            sessao.gerente = ativos.first().gerente;
+        } else {
+            sessao.idOperador = kOperadorGerenteId;
+            sessao.nomeOperador = QString::fromLatin1(kOperadorGerenteNome);
+            sessao.gerente = true;
+            sessao.pinGeral = true;
+        }
+        return sessao;
+    }
+
+    } // namespace
 
     int main(int argc, char *argv[])
     {
@@ -39,7 +80,6 @@
 
         a.setPalette(lightPalette);
 
-
         QTranslator translator;
         const QStringList uiLanguages = QLocale::system().uiLanguages();
         for (const QString &locale : uiLanguages) {
@@ -49,7 +89,52 @@
                 break;
             }
         }
+
+        // Uma instância por computador: duas janelas dividiriam o mesmo terminal, o mesmo caixa e
+        // a mesma sessão de log (uma fecharia a sessão da outra como "sem logout").
+        QLockFile travaInstancia(QDir::temp().absoluteFilePath("QEstoqueLoja.instancia.lock"));
+        travaInstancia.setStaleLockTime(0);   // só considera velha se o processo não existe mais
+        if (!travaInstancia.tryLock(200)) {
+            QMessageBox::warning(nullptr, "QEstoqueLoja",
+                "O QEstoqueLoja já está aberto neste computador.");
+            return 0;
+        }
+
+        // Regra de administração também no serviço: cadastrar, desbloquear, redefinir PIN e marcar
+        // gerente só passam com gerente logado (ou elevação por PIN do gerente), mesmo se uma tela
+        // nova esquecer de conferir.
+        Operador_service::definirAutorizador([]() {
+            return Sessao_service::instancia()->autorizadoParaAdministrar();
+        });
+
+        // A MainWindow é construída antes do login porque é ela que aponta a conexão do banco
+        // e roda a migração; a auditoria da sessão precisa das duas coisas prontas.
         MainWindow w;
+
+        // Nenhuma tela de venda abre antes de existir uma sessão aceita.
+        const bool modoDesenvolvimento = autologinDesenvolvimento();
+        SessaoDTO sessaoDTO;
+        if (modoDesenvolvimento) {
+            sessaoDTO = sessaoDesenvolvimento();
+            qWarning().noquote() << "\n=== MODO DESENVOLVIMENTO: login automatico como"
+                                 << sessaoDTO.nomeOperador << "===\n";
+        } else {
+            bool cancelou = false;
+            sessaoDTO = LoginOperador::executar(&cancelou, &w);
+            if (cancelou || sessaoDTO.nomeOperador.isEmpty())
+                return 0;
+        }
+
+        QString erroSessao;
+        // o DTO só é aceito sem conferência no login de desenvolvimento (build Debug)
+        Sessao_service::instancia()->abrir(sessaoDTO, &erroSessao, modoDesenvolvimento);
+        if (!erroSessao.isEmpty()) {
+            QMessageBox::critical(&w, "Sessão do operador", erroSessao);
+            return 1;
+        }
+
+        w.setModoDesenvolvimento(modoDesenvolvimento);
+        w.aplicarSessao();
         w.show();
         // atalho da Área de Trabalho: QEstoqueLoja --pdv abre direto a tela de venda
         const QStringList args = QCoreApplication::arguments();

@@ -16,6 +16,10 @@ struct VendasDTO {
     bool estaPago;
     qlonglong idCliente;
     qlonglong idCaixa = 0;
+    // quem estava logado na venda. idCaixa aponta para o dono do caixa, que pode ser outra pessoa.
+    // -1 = sem sessão (venda fora de uma sessão de operador, ex.: gravação avulsa);
+    // 0 = gerente que entrou com o PIN geral; >= 1 = operador do cadastro.
+    qlonglong idOperadorSessao = -1;
     QString adicionadoEm;
     QString atualizadoEm;
 };

@@ -2,13 +2,17 @@
 #include <QMap>
 #include <QUuid>
 #include <QSqlQuery>
+#include <QSqlError>
 #include "repository/caixa_repository.h"
 #include "repository/operador_repository.h"
+#include "repository/sessao_repository.h"
 #include "infra/databaseconnection_service.h"
 #include "dto/Vendas_dto.h"
+#include "dto/Sessao_dto.h"
 #include "test_caixa_service.h"
 #include "services/caixa_service.h"
 #include "services/operador_service.h"
+#include "services/sessao_service.h"
 #include "../db/test_db_factory.h"
 
 void TestCaixaService::pin_formato()
@@ -473,13 +477,19 @@ void TestCaixaService::desativar_operador_com_caixa_aberto_e_recusado()
     QVERIFY(os.definirAtivo(op, false).ok);
 }
 
+static QString terminalDoTeste()
+{
+    const QString host = QSysInfo::machineHostName().trimmed();
+    return host.isEmpty() ? QStringLiteral("TERMINAL") : host.toUpper();
+}
+
 void TestCaixaService::pin_do_gerente()
 {
     Operador_service os;
     Operador_repository repo;
     // estado limpo: zera bloqueio e tentativas de execuções anteriores
-    repo.setConfigCaixa("gerente_bloqueio_ate", "0");
-    repo.setConfigCaixa("gerente_tentativas", "0");
+    repo.setConfigCaixa("gerente_bloqueio_ate_" + terminalDoTeste(), "0");
+    repo.setConfigCaixa("gerente_tentativas_" + terminalDoTeste(), "0");
 
     QVERIFY(!os.definirGerentePin("12").ok);
     QVERIFY(!os.definirGerentePin("abcd").ok);
@@ -500,7 +510,269 @@ void TestCaixaService::pin_do_gerente()
     QVERIFY(bloqueado.msg.contains("bloqueado", Qt::CaseInsensitive));
 
     // limpeza para não afetar o que vier depois
-    repo.setConfigCaixa("gerente_bloqueio_ate", "0");
-    repo.setConfigCaixa("gerente_tentativas", "0");
+    repo.setConfigCaixa("gerente_bloqueio_ate_" + terminalDoTeste(), "0");
+    repo.setConfigCaixa("gerente_tentativas_" + terminalDoTeste(), "0");
     QVERIFY(os.validarGerentePin("2468").ok);
+}
+
+void TestCaixaService::gerente_precisa_de_identidade_no_cadastro()
+{
+    Operador_service os;
+    const auto primeiro = os.cadastrar("Op Gerente", "3456");
+    QVERIFY(primeiro.ok);
+
+    // ninguém nasce gerente: o acesso de gerente só existe com marcação ou PIN geral
+    QVERIFY(!os.getPorId(primeiro.id).gerente);
+    QVERIFY(os.marcarGerente(primeiro.id, true).ok);
+    QVERIFY(os.getPorId(primeiro.id).gerente);
+
+    // não dá para tirar o acesso do único gerente ativo, senão a loja fica sem gerente
+    QVERIFY(!os.marcarGerente(primeiro.id, false).ok);
+    QVERIFY(os.getPorId(primeiro.id).gerente);
+
+    // com dois gerentes, um deles pode ser rebaixado
+    const auto segundo = os.cadastrar("Op Gerente 2", "3457");
+    QVERIFY(segundo.ok);
+    QVERIFY(os.marcarGerente(segundo.id, true).ok);
+    QVERIFY(os.marcarGerente(segundo.id, false).ok);
+    QVERIFY(!os.getPorId(segundo.id).gerente);
+    QVERIFY(os.getPorId(primeiro.id).gerente);
+
+    // e a marcação sobrevive ao cadastro: o repository devolve o campo
+    QVERIFY(os.listar(true).size() > 0);
+}
+
+void TestCaixaService::login_por_pingeral_entra_como_gerente()
+{
+    Operador_service os;
+    Operador_repository repo;
+    repo.setConfigCaixa("gerente_bloqueio_ate_" + terminalDoTeste(), "0");
+    repo.setConfigCaixa("gerente_tentativas_" + terminalDoTeste(), "0");
+    QVERIFY(os.definirGerentePin("2468").ok);
+
+    // PIN errado não abre sessão
+    const SessaoDTO recusada = os.validarLogin(kOperadorGerenteId, "0000");
+    QVERIFY(recusada.nomeOperador.isEmpty());
+
+    const SessaoDTO gerente = os.validarLogin(kOperadorGerenteId, "2468");
+    QVERIFY(gerente.valida());
+    QCOMPARE(gerente.idOperador, kOperadorGerenteId);
+    QVERIFY(gerente.gerente);
+    QVERIFY(gerente.pinGeral);
+    QCOMPARE(gerente.nomeOperador, QString::fromLatin1(kOperadorGerenteNome));
+
+    // operador comum entra com o próprio PIN e só é gerente se estiver marcado
+    const auto cad = os.cadastrar("Op Login", "1122");
+    QVERIFY(cad.ok);
+    const SessaoDTO comum = os.validarLogin(cad.id, "1122");
+    QVERIFY(comum.valida());
+    QCOMPARE(comum.idOperador, cad.id);
+    QVERIFY(!comum.gerente);
+    QVERIFY(!comum.pinGeral);
+
+    QVERIFY(os.marcarGerente(cad.id, true).ok);
+    QVERIFY(os.validarLogin(cad.id, "1122").gerente);
+}
+
+void TestCaixaService::sessao_grava_entrada_e_saida()
+{
+    TestDbFactory::garantirCaixaAberto();
+    Sessao_repository repo;
+
+    SessaoDTO sessao;
+    sessao.idOperador = kOperadorGerenteId;
+    sessao.nomeOperador = QStringLiteral("Gerente de Teste");
+    sessao.gerente = true;
+    sessao.terminal = QStringLiteral("TERM-TESTE-SESSAO");
+
+    const qlonglong idLog = repo.registrarEntrada(sessao, 0);
+    QVERIFY(idLog > 0);
+
+    // enquanto não grava a saída, a sessão aparece como aberta
+    QVERIFY(repo.fecharSessoesPendentes(sessao.terminal) >= 1);
+
+    const QList<LogSessaoDTO> logs = repo.listar(10);
+    QVERIFY(!logs.isEmpty());
+    const LogSessaoDTO encontrado = [&logs, &sessao]() {
+        for (const LogSessaoDTO &l : logs)
+            if (l.terminal == sessao.terminal)
+                return l;
+        return LogSessaoDTO();
+    }();
+    QCOMPARE(encontrado.idOperador, kOperadorGerenteId);
+    QVERIFY(encontrado.gerente);
+    QVERIFY(!encontrado.saidaEm.isEmpty());
+    QCOMPARE(encontrado.motivoSaida, QStringLiteral("SEM_LOGOUT"));
+}
+
+void TestCaixaService::venda_registra_o_operador_da_sessao_e_nao_o_dono_do_caixa()
+{
+    TestDbFactory::garantirCaixaAberto();
+    Caixa_service cs;
+    const CaixaDTO caixa = cs.caixaAbertoNoTerminal();
+    QVERIFY(caixa.aberto());
+
+    // o dono do caixa é o operador do teste; quem vende é outro, logado na sessão
+    Operador_service os;
+    const auto vendedor = os.cadastrar("Op Vendedor", "5678");
+    QVERIFY(vendedor.ok);
+
+    QSqlDatabase db = DatabaseConnection_service::db();
+    QSqlQuery query(db);
+    query.prepare("INSERT INTO vendas2 (cliente, total, data_hora, forma_pagamento, valor_recebido, "
+                  "troco, taxa, valor_final, desconto, esta_pago, id_caixa, id_operador_sessao) "
+                  "VALUES ('Cliente', 10, '2026-01-01 10:00:00', 'Dinheiro', 10, 0, 0, 10, 0, 1, :caixa, :sessao)");
+    query.bindValue(":caixa", caixa.id);
+    query.bindValue(":sessao", vendedor.id);
+    QVERIFY2(query.exec(), qPrintable(query.lastError().text()));
+
+    // o dono do caixa é a resposta do cabeçalho e nunca entra na lista de "outros"
+    const ResumoCaixaDTO resumo = cs.resumo(caixa.id);
+    QCOMPARE(resumo.caixa.idOperador, caixa.idOperador);
+    bool achouVendedor = false;
+    for (const OperadorSessaoCaixaDTO &op : resumo.operadoresDaSessao) {
+        QVERIFY(op.id != caixa.idOperador);
+        if (op.id == vendedor.id) {
+            achouVendedor = true;
+            QCOMPARE(op.nome, QStringLiteral("Op Vendedor"));
+            QCOMPARE(op.quantidade, 1LL);
+        }
+    }
+    QVERIFY(achouVendedor);
+}
+
+namespace {
+// cadastra um operador de teste e devolve uma sessão aberta para ele
+qlonglong novoOperadorDeTeste(Operador_service &os, const QString &prefixo, const QString &pin)
+{
+    const auto r = os.cadastrar(prefixo + QUuid::createUuid().toString(QUuid::Id128).left(8), pin);
+    return r.ok ? r.id : 0;
+}
+
+bool abrirSessaoDe(qlonglong id, Operador_service &os)
+{
+    SessaoDTO s;
+    s.idOperador = id;
+    s.nomeOperador = os.getPorId(id).nome;
+    s.terminal = QStringLiteral("TERM-TESTE-SESSAO");
+    QString erro;
+    Sessao_service::instancia()->abrir(s, &erro);
+    return Sessao_service::instancia()->ativa() && Sessao_service::instancia()->idOperador() == id;
+}
+}
+
+void TestCaixaService::sessao_expira_e_novo_login_continua_valido()
+{
+    Operador_service os;
+    const qlonglong a = novoOperadorDeTeste(os, "SessA ", "1357");
+    const qlonglong b = novoOperadorDeTeste(os, "SessB ", "2468");
+    QVERIFY(a > 0 && b > 0);
+    auto *sess = Sessao_service::instancia();
+
+    QVERIFY(abrirSessaoDe(a, os));
+    // quem ouve o sinal de expiração faz o novo login na hora (como o MainWindow): a sessão nova
+    // não pode ser derrubada pelo fim do encerramento da antiga
+    connect(sess, &Sessao_service::sessaoExpirada, this, [&]() { abrirSessaoDe(b, os); },
+            Qt::SingleShotConnection);
+    sess->iniciarTimeout(true, 1);
+    sess->simularInatividadeParaTeste(3600);
+    sess->tique();
+    QVERIFY(sess->ativa());
+    QCOMPARE(sess->idOperador(), b);
+    sess->pararTimeout();
+    sess->encerrar("LOGOUT");
+}
+
+void TestCaixaService::sessao_bloqueia_e_desbloqueia_com_pin_do_operador_ou_do_gerente()
+{
+    Operador_service os;
+    Operador_repository repo;
+    repo.setConfigCaixa("gerente_bloqueio_ate_" + terminalDoTeste(), "0");
+    repo.setConfigCaixa("gerente_tentativas_" + terminalDoTeste(), "0");
+    QVERIFY(os.definirGerentePin("2468").ok);
+    const qlonglong a = novoOperadorDeTeste(os, "Bloq ", "1357");
+    QVERIFY(a > 0);
+    auto *sess = Sessao_service::instancia();
+    QVERIFY(abrirSessaoDe(a, os));
+
+    sess->definirVendaEmAndamento(true);
+    sess->iniciarTimeout(true, 1);
+    sess->simularInatividadeParaTeste(3600);
+    sess->tique();
+    QVERIFY(sess->ativa());
+    QVERIFY(sess->bloqueada());
+
+    QVERIFY(!sess->desbloquear("0000").ok);
+    QVERIFY(sess->bloqueada());
+    QVERIFY(sess->desbloquear("1357").ok);
+    QVERIFY(!sess->bloqueada());
+
+    // bloqueia de novo e desbloqueia com o PIN do gerente (fica na auditoria)
+    sess->simularInatividadeParaTeste(3600);
+    sess->tique();
+    QVERIFY(sess->bloqueada());
+    QVERIFY(sess->desbloquear("2468").ok);
+    bool achou = false;
+    for (const LogAcaoDTO &l : sess->ultimasAcoes(50))
+        if (l.acao == "DESBLOQUEIO_POR_GERENTE")
+            achou = true;
+    QVERIFY(achou);
+
+    sess->definirVendaEmAndamento(false);
+    sess->pararTimeout();
+    sess->encerrar("LOGOUT");
+    repo.setConfigCaixa("gerente_bloqueio_ate_" + terminalDoTeste(), "0");
+    repo.setConfigCaixa("gerente_tentativas_" + terminalDoTeste(), "0");
+}
+
+void TestCaixaService::sessao_cai_quando_operador_e_desativado()
+{
+    Operador_service os;
+    const qlonglong a = novoOperadorDeTeste(os, "Desat ", "1357");
+    QVERIFY(a > 0);
+    auto *sess = Sessao_service::instancia();
+    QVERIFY(abrirSessaoDe(a, os));
+
+    QVERIFY(os.definirAtivo(a, false).ok);
+    sess->revalidar();
+    QVERIFY(!sess->ativa());
+}
+
+void TestCaixaService::sessao_com_venda_em_andamento_so_bloqueia()
+{
+    Operador_service os;
+    const qlonglong a = novoOperadorDeTeste(os, "Venda ", "1357");
+    QVERIFY(a > 0);
+    auto *sess = Sessao_service::instancia();
+    QVERIFY(abrirSessaoDe(a, os));
+
+    QObject tela;
+    bool temItens = true;
+    sess->registrarTelaDeVenda(&tela, [&]() { return temItens; });
+    QVERIFY(sess->temVendaEmAndamento());
+    sess->iniciarTimeout(true, 1);
+    sess->simularInatividadeParaTeste(3600);
+    sess->tique();
+    QVERIFY(sess->ativa());        // bloqueou, não expirou: a venda não se perde
+    QVERIFY(sess->bloqueada());
+
+    sess->removerTelaDeVenda(&tela);
+    QVERIFY(!sess->temVendaEmAndamento());
+    sess->pararTimeout();
+    sess->encerrar("LOGOUT");
+}
+
+void TestCaixaService::autorizador_bloqueia_administracao_sem_gerente()
+{
+    Operador_service os;
+    Sessao_service::instancia()->encerrar("LOGOUT");
+    bool liberar = false;
+    Operador_service::definirAutorizador([&]() { return liberar; });
+    const auto negado = os.cadastrar("Sem Permissao " + QUuid::createUuid().toString(QUuid::Id128).left(6), "1357");
+    QVERIFY(!negado.ok);
+    QVERIFY(negado.msg.contains("gerente", Qt::CaseInsensitive));
+    liberar = true;
+    const auto ok = os.cadastrar("Com Permissao " + QUuid::createUuid().toString(QUuid::Id128).left(6), "1357");
+    QVERIFY(ok.ok);
+    Operador_service::definirAutorizador(nullptr);
 }

@@ -24,6 +24,7 @@
 #include "nota/acbrmanager.h"
 #include "../services/Produto_service.h"
 #include "dto/Config_dto.h"
+#include "dto/Sessao_dto.h"
 #include "services/contingencia_service.h"
 
 
@@ -32,6 +33,8 @@
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
+
+class venda;
 
 class MainWindow : public QMainWindow
 {
@@ -46,6 +49,10 @@ public:
     void abrirPdv();
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+    // Exibe a tarja "MODO DESENVOLVIMENTO" no topo: só entra ligado pelo autologin de Debug.
+    void setModoDesenvolvimento(bool ativo);
+    // Chamado depois de abrir a sessão: repõe o rodapé e arma o timeout de inatividade.
+    void aplicarSessao();
     QLocale portugues;
     QIcon iconAlterarProduto, iconAddProduto, iconBtnVenda, iconDelete, iconPesquisa, iconBtnRelatorios,
         iconImpressora, iconClientes;
@@ -117,6 +124,13 @@ private slots:
     void suprimentoClicked();
     void historicoCaixaClicked();
     void operadoresClicked();
+    void trocarOperadorClicked();
+    void sairSessaoClicked();
+    void sessaoExpirada();
+    void sessaoBloqueada();
+    void sessaoInvalidada(const QString &motivo);
+    void logAcessoClicked();
+    void mostrarAvisoTimeout(int segundosRestantes);
 
 private:
     Ui::MainWindow *ui;
@@ -135,15 +149,30 @@ private:
     Config_service *confServ = new Config_service(this);
     ConfigDTO configDTO;
     ContingenciaService *contingenciaService = nullptr;
+    // QPointer zera sozinho quando a tela de venda é fechada (WA_DeleteOnClose).
+    // Fica como QWidget porque venda só é forward-declared aqui; o .cpp faz o
+    // static_cast quando precisa dos métodos específicos do PDV.
     QPointer<QWidget> pdvAberto;
 
 
     void setarIconesJanela();
     //QModelIndex selected_index;
 
-    const int ultimaVersaoSchema = 15;
+    const int ultimaVersaoSchema = 17;
 
-
+    // operador comum só entra em histórico, cadastro de operadores, configurações e
+    // relatórios gerenciais depois de informar o PIN do gerente
+    bool exigirGerente(const QString &acao);
+    void bloqueioParaTroca(QString *motivo) const;
+    void encerrarSessao(bool sairDoPrograma);
+    // Abre a tela de login e, se entrar, arma a sessão e o timeout. Devolve false se
+    // cancelou (e, nesse caso, fecha o programa quando fecharSeCancelar).
+    bool pedirLoginNovamente(bool fecharSeCancelar);
+    // abre a sessão do login aceito e arma o timeout; false (e encerra o programa) se não abrir
+    bool iniciarSessao(const SessaoDTO &nova);
+    // sem sessão aceita o programa não continua: fecha todas as janelas (inclusive o PDV)
+    void encerrarPrograma();
+    void atualizarIndicadorSessao();
     void mostrarProdutoPorCodigoBarras(const QString &codigo);
     void imprimirNomePreco(int quantidade);
     void iniciarMigration();
@@ -152,8 +181,15 @@ private:
     void atualizarIndicadorCaixa();
     bool garantirCaixaAberto();
     QLabel *lblCaixaStatus = nullptr;
+    bool saindoDoPrograma = false;
+    QLabel *lblSessao = nullptr;
+    QLabel *lblAvisoTimeout = nullptr;
+    QAction *actionTrocarOperador = nullptr;
+    QAction *actionSairSessao = nullptr;
+    bool modoDesenvolvimento = false;
 protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
+    void closeEvent(QCloseEvent *event) override;
     QString getIdProdSelected();
 signals:
     void localSetado();

@@ -40,7 +40,8 @@ private slots:
 
     void on_CBox_DBDriver_currentIndexChanged(int index);
 
-    void on_CBox_Impressora_activated(int index);
+       void on_CBox_Impressora_activated(int index);
+       void on_Chk_SessaoTimeout_toggled(bool checked);
 
 private:
     Ui::Config *ui;

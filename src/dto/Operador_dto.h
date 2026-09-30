@@ -12,6 +12,7 @@ struct OperadorDTO {
     bool bloqueado = false;
     QString adicionadoEm;
     QString atualizadoEm;
+    bool gerente = false;
 };
 
 #endif // OPERADOR_DTO_H

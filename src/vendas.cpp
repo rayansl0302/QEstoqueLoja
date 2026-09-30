@@ -19,6 +19,7 @@
 #include "nota/cancelnf.h"
 #include "nota/nfeacbr.h"
 #include "services/recibo_service.h"
+#include "services/sessao_service.h"
 
 Vendas::Vendas(QWidget *parent, int idCliente) :
     QWidget(parent),
@@ -99,6 +100,14 @@ Vendas::Vendas(QWidget *parent, int idCliente) :
 
     QPair<QDate, QDate> dateRange = vendaServ.getMinMaxData();
     qDebug() << dateRange;
+
+    // quem está na sessão aparece na lista de vendas: é ela que responde pelo que sale daqui
+    const SessaoDTO sessao = Sessao_service::instancia()->sessao();
+    ui->Lbl_Operador->setText(sessao.nomeOperador.isEmpty()
+                                  ? QStringLiteral("Operador: —")
+                                  : QStringLiteral("Operador: %1%2")
+                                        .arg(sessao.nomeOperador,
+                                             sessao.gerente ? QStringLiteral(" (gerente)") : QString()));
 
     ui->DateEdt_De->setDate(dateRange.first);
     ui->DateEdt_Ate->setDate(dateRange.second);

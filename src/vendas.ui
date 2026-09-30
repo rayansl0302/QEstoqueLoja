@@ -207,6 +207,16 @@ QLabel {
         </property>
        </spacer>
       </item>
+      <item>
+       <widget class="QLabel" name="Lbl_Operador">
+        <property name="styleSheet">
+         <string notr="true">color: rgba(195, 215, 235, 180);</string>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>

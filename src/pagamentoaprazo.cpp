@@ -1,8 +1,11 @@
 #include "pagamentoaprazo.h"
 #include "vendas.h"
 #include "services/caixa_service.h"
+#include "services/sessao_service.h"
 #include <QMessageBox>
+#include <QMetaType>
 #include <QSqlError>
+#include <QVariant>
 
 pagamentoAPrazo::pagamentoAPrazo(QString id_venda, QString total, QString cliente, QString data, QWidget *parent)
     : pagamento(total, cliente, data, parent)
@@ -111,9 +114,15 @@ void pagamentoAPrazo::terminarPagamento()
         return;
     }
 
-    query.prepare("INSERT INTO entradas_vendas (id_venda, total, data_hora, forma_pagamento, valor_recebido, troco, taxa, valor_final, desconto, id_caixa) VALUES (:valor1, :valor2, :valor3, :valor4, :valor5, :valor6, :valor7, :valor8, :valor9, :idcaixa)");
+    query.prepare("INSERT INTO entradas_vendas (id_venda, total, data_hora, forma_pagamento, valor_recebido, troco, taxa, valor_final, desconto, id_caixa, id_operador_sessao) VALUES (:valor1, :valor2, :valor3, :valor4, :valor5, :valor6, :valor7, :valor8, :valor9, :idcaixa, :idoperadorsessao)");
     query.bindValue(":valor1", idVenda);
     query.bindValue(":idcaixa", caixaAberto.id);
+    // quem recebeu e o operador logado, e nao o dono do caixa.
+    // -1 (sem sessao) vira NULL; 0 e o gerente do PIN geral, que e sessao valida.
+    const qlonglong idOperadorSessao = Sessao_service::instancia()->idOperador();
+    query.bindValue(":idoperadorsessao", idOperadorSessao >= 0
+                                         ? QVariant(idOperadorSessao)
+                                         : QVariant(QMetaType(QMetaType::LongLong)));
     // precisa converter para notacao usa para inserir no banco de dados
     query.bindValue(":valor2", QString::number(portugues.toFloat(totalGlobal)));
     // inserir a data do dateedit

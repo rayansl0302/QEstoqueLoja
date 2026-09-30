@@ -32,6 +32,15 @@ private slots:
     void recebimento_de_caixa_fechado_nao_pode_ser_excluido();
     void desativar_operador_com_caixa_aberto_e_recusado();
     void pin_do_gerente();
+    void gerente_precisa_de_identidade_no_cadastro();
+    void login_por_pingeral_entra_como_gerente();
+    void sessao_grava_entrada_e_saida();
+    void venda_registra_o_operador_da_sessao_e_nao_o_dono_do_caixa();
+    void sessao_expira_e_novo_login_continua_valido();
+    void sessao_bloqueia_e_desbloqueia_com_pin_do_operador_ou_do_gerente();
+    void sessao_cai_quando_operador_e_desativado();
+    void sessao_com_venda_em_andamento_so_bloqueia();
+    void autorizador_bloqueia_administracao_sem_gerente();
 };
 
 #endif // TEST_CAIXA_SERVICE_H

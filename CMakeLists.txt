@@ -113,6 +113,7 @@ set(QESTOQUE_SOURCES
     src/services/acbr_service.cpp
     src/services/schemamigration_service.cpp
     src/services/escposprinter_service.cpp
+    src/services/sessao_service.cpp
 
 
     src/repository/Produto_repository.cpp
@@ -127,6 +128,7 @@ set(QESTOQUE_SOURCES
     src/repository/caixa_repository.cpp
     src/repository/produtovenda_repository.cpp
     src/repository/entradasvendas_repository.cpp
+    src/repository/sessao_repository.cpp
 
     src/util/datautil.cpp
     src/util/ibptutil.cpp
@@ -308,14 +310,19 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/services/entradanfe_service.h src/services/entradanfe_service.cpp
         src/services/estoquenota_service.h src/services/estoquenota_service.cpp
         src/dto/Operador_dto.h
+        src/dto/Sessao_dto.h
         src/repository/operador_repository.h src/repository/operador_repository.cpp
+        src/repository/sessao_repository.h src/repository/sessao_repository.cpp
         src/services/operador_service.h src/services/operador_service.cpp
+        src/services/sessao_service.h src/services/sessao_service.cpp
+        src/loginoperador.h src/loginoperador.cpp src/loginoperador.ui
         src/dto/Caixa_dto.h
         src/repository/caixa_repository.h src/repository/caixa_repository.cpp
         src/services/caixa_service.h src/services/caixa_service.cpp
         src/services/relatoriocaixa_service.h src/services/relatoriocaixa_service.cpp
         src/aberturacaixa.h src/aberturacaixa.cpp src/aberturacaixa.ui
         src/operadores.h src/operadores.cpp src/operadores.ui
+        src/logacessodialog.h src/logacessodialog.cpp
         src/movimentacaocaixa.h src/movimentacaocaixa.cpp src/movimentacaocaixa.ui
         src/fechamentocaixa.h src/fechamentocaixa.cpp src/fechamentocaixa.ui
         src/historicocaixas.h src/historicocaixas.cpp src/historicocaixas.ui
@@ -410,6 +417,12 @@ target_link_libraries(QEstoqueLoja PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt6::S
     zint Qt6::Charts QtRPT Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Xml
      Qt${QT_VERSION_MAJOR}::Qml Qt${QT_VERSION_MAJOR}::Network
 )
+
+# main.cpp só aceita QESTOQUELOJA_DEV_AUTOLOGIN (entrada sem PIN) em build de desenvolvimento.
+# A tarja "MODO DESENVOLVIMENTO" na tela principal depende desta definição.
+# Expressão de gerador: vale só para a configuração Debug. No Visual Studio o teste por
+# CMAKE_CONFIGURATION_TYPES acertava em "Debug;Release;..." e ligava a macro também no Release.
+target_compile_definitions(QEstoqueLoja PRIVATE $<$<CONFIG:Debug>:QEL_MODO_DESENVOLVIMENTO>)
 
 #target_link_libraries(QEstoqueLoja  PRIVATE -lQtRPT -lxml2)
 

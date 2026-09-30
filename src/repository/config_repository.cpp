@@ -87,6 +87,11 @@ ConfigDTO Config_repository::loadAll()
     dto.caixaToleranciaValor   = s.value("caixa/tolerancia_valor", 2.0).toDouble();
     dto.caixaToleranciaPercent = s.value("caixa/tolerancia_percent", 0.5).toDouble();
 
+    dto.caixaTimeoutAtivo    = s.value("caixa/timeout_ativo", true).toBool();
+    dto.caixaTimeoutMinutos  = s.value("caixa/timeout_minutos", 30).toInt();
+    if (dto.caixaTimeoutMinutos < 1)
+        dto.caixaTimeoutMinutos = 1;
+
     return dto;
 }
 
@@ -165,6 +170,9 @@ bool Config_repository::saveAll(const ConfigDTO &dto)
 
     s.setValue("caixa/tolerancia_valor",   dto.caixaToleranciaValor);
     s.setValue("caixa/tolerancia_percent", dto.caixaToleranciaPercent);
+
+    s.setValue("caixa/timeout_ativo",   dto.caixaTimeoutAtivo);
+    s.setValue("caixa/timeout_minutos", dto.caixaTimeoutMinutos);
 
 
 

@@ -1,4 +1,5 @@
 #include "caixa_service.h"
+#include "sessao_service.h"
 #include <QSysInfo>
 #include <QLocale>
 #include <QDateTime>
@@ -109,6 +110,7 @@ Caixa_service::Resultado Caixa_service::registrarMovimentacaoSimples(const QStri
     mov.formaPagamento = "Dinheiro";
     mov.motivo = motivo.trimmed();
     mov.idOperador = caixa.idOperador;
+    mov.idOperadorSessao = Sessao_service::instancia()->idOperador();
 
     QString erro;
     const qlonglong id = repo.inserirMovimentacao(mov, &erro);
@@ -143,6 +145,7 @@ Caixa_service::Resultado Caixa_service::registrarRecebimento(qlonglong idVenda, 
     mov.idVenda = idVenda;
     mov.idEntradaVenda = idEntradaVenda;
     mov.idOperador = caixa.idOperador;
+    mov.idOperadorSessao = Sessao_service::instancia()->idOperador();
 
     QString erro;
     const qlonglong id = repo.inserirMovimentacao(mov, &erro);
@@ -224,6 +227,7 @@ Caixa_service::Resultado Caixa_service::registrarCancelamento(const VendasDTO &v
     mov.motivo = motivo.trimmed();
     mov.idVenda = venda.id;
     mov.idOperador = atual.aberto() ? atual.idOperador : caixa.idOperador;
+    mov.idOperadorSessao = Sessao_service::instancia()->idOperador();
     mov.estornado = venda.estaPago;
 
     QString erro;
@@ -288,6 +292,14 @@ ResumoCaixaDTO Caixa_service::resumo(qlonglong idCaixa)
         for (FechamentoFormaDTO &f : r.fechamento)
             f.foraDaTolerancia = !dentroDaTolerancia(f.diferenca, f.valorEsperado);
     }
+
+    // Quem trabalhou no caixa sem ser o dono: o dono é a resposta 1 e não entra na lista
+    const QList<OperadorSessaoCaixaDTO> todos = repo.operadoresDaSessao(idCaixa);
+    for (const OperadorSessaoCaixaDTO &op : todos) {
+        if (op.id == r.caixa.idOperador)
+            continue;
+        r.operadoresDaSessao << op;
+    }
     return r;
 }
 
@@ -346,7 +358,9 @@ Caixa_service::Resultado Caixa_service::fecharCaixa(qlonglong idCaixa, const QSt
                            "). Descreva a justificativa na observação."};
 
     QString erro;
-    if (!repo.fechar(idCaixa, observacao.trimmed(), formas, &erro))
+    // quantidades usadas nas contas: se mudarem até o fim do fechamento, o repositório desfaz
+    if (!repo.fechar(idCaixa, observacao.trimmed(), formas, &erro, r.quantidadeVendas,
+                     int(r.movimentacoes.size() + r.cancelamentos.size())))
         return {false, "Não foi possível fechar o caixa: " + erro};
     return {true, "Caixa fechado.", idCaixa};
 }

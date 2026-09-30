@@ -137,6 +137,19 @@ jobs:
         shell: pwsh
         run: ./.github/scripts/verificar-pacote.ps1 -Pasta dist
 
+      # O login sem PIN (QESTOQUELOJA_DEV_AUTOLOGIN) só existe em build Debug. Se o texto aparecer
+      # no executável do pacote, a macro de desenvolvimento vazou para o Release: não gera o pacote.
+      - name: Conferir que o executável não tem o login de desenvolvimento
+        shell: pwsh
+        run: |
+          $bytes = [IO.File]::ReadAllBytes('dist/QEstoqueLoja.exe')
+          $texto = [Text.Encoding]::ASCII.GetString($bytes)
+          if ($texto.Contains('QESTOQUELOJA_DEV_AUTOLOGIN')) {
+            Write-Host 'ERRO: o executável contém o login de desenvolvimento (QEL_MODO_DESENVOLVIMENTO ligado no Release).'
+            exit 1
+          }
+          Write-Host 'OK: sem login de desenvolvimento no pacote.'
+
       - name: Enviar o resultado
         uses: actions/upload-artifact@v4
         with:

@@ -17,11 +17,14 @@ public:
     bool atualizar(const OperadorDTO &op, QString *erro = nullptr);
     bool atualizarPin(qlonglong id, const QString &pinHash, const QString &pinSalt, QString *erro = nullptr);
     bool atualizarAtivo(qlonglong id, bool ativo, QString *erro = nullptr);
+    bool atualizarGerente(qlonglong id, bool gerente, QString *erro = nullptr);
     bool registrarTentativa(qlonglong id, int tentativas, bool bloqueado, QString *erro = nullptr);
     OperadorDTO getPorId(qlonglong id);
     QList<OperadorDTO> listar(bool somenteAtivos);
     void listar(QSqlQueryModel *model);
     bool nomeExiste(const QString &nome, qlonglong ignorarId = 0);
+    // quantos gerentes com identidade e ativos existem no cadastro (o PIN geral não conta)
+    int contarGerentesAtivos();
     // chaves do módulo de caixa compartilhadas entre os terminais (ex.: PIN do gerente)
     QString getConfigCaixa(const QString &chave);
     bool setConfigCaixa(const QString &chave, const QString &valor, QString *erro = nullptr);

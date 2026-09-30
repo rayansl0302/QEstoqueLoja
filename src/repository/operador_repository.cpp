@@ -31,6 +31,7 @@ OperadorDTO Operador_repository::lerLinha(QSqlQuery &query)
     op.bloqueado = query.value("bloqueado").toBool();
     op.adicionadoEm = query.value("adicionado_em").toString();
     op.atualizadoEm = query.value("atualizado_em").toString();
+    op.gerente = query.value("gerente").toBool();
     return op;
 }
 
@@ -42,14 +43,15 @@ qlonglong Operador_repository::inserir(const OperadorDTO &op, QString *erro)
     }
     QSqlQuery query(db);
     query.prepare("INSERT INTO operadores (nome, pin_hash, pin_salt, ativo, tentativas_falhas, bloqueado, "
-                  "adicionado_em, atualizado_em) "
-                  "VALUES (:nome, :hash, :salt, :ativo, 0, :bloq, :agora, :agora2)");
+                  "gerente, adicionado_em, atualizado_em) "
+                  "VALUES (:nome, :hash, :salt, :ativo, 0, :bloq, :gerente, :agora, :agora2)");
     const QDateTime agora = QDateTime::currentDateTime();
     query.bindValue(":nome", op.nome);
     query.bindValue(":hash", op.pinHash);
     query.bindValue(":salt", op.pinSalt);
     query.bindValue(":ativo", op.ativo);
     query.bindValue(":bloq", false);
+    query.bindValue(":gerente", op.gerente);
     query.bindValue(":agora", agora);
     query.bindValue(":agora2", agora);
     if (!query.exec()) {
@@ -67,11 +69,31 @@ bool Operador_repository::atualizar(const OperadorDTO &op, QString *erro)
         return false;
     }
     QSqlQuery query(db);
-    query.prepare("UPDATE operadores SET nome = :nome, ativo = :ativo, atualizado_em = :agora WHERE id = :id");
+    query.prepare("UPDATE operadores SET nome = :nome, ativo = :ativo, gerente = :gerente, "
+                  "atualizado_em = :agora WHERE id = :id");
     query.bindValue(":nome", op.nome);
     query.bindValue(":ativo", op.ativo);
+    query.bindValue(":gerente", op.gerente);
     query.bindValue(":agora", QDateTime::currentDateTime());
     query.bindValue(":id", op.id);
+    if (!query.exec()) {
+        setErro(erro, query.lastError().text());
+        return false;
+    }
+    return true;
+}
+
+bool Operador_repository::atualizarGerente(qlonglong id, bool gerente, QString *erro)
+{
+    if (!DatabaseConnection_service::open()) {
+        setErro(erro, "Banco de dados indisponível.");
+        return false;
+    }
+    QSqlQuery query(db);
+    query.prepare("UPDATE operadores SET gerente = :gerente, atualizado_em = :agora WHERE id = :id");
+    query.bindValue(":gerente", gerente);
+    query.bindValue(":agora", QDateTime::currentDateTime());
+    query.bindValue(":id", id);
     if (!query.exec()) {
         setErro(erro, query.lastError().text());
         return false;
@@ -180,6 +202,7 @@ void Operador_repository::listar(QSqlQueryModel *model)
     QSqlQuery query(db);
     query.prepare("SELECT id, nome, "
                   "CASE WHEN ativo THEN 'Sim' ELSE 'Não' END AS ativo, "
+                  "CASE WHEN gerente THEN 'Sim' ELSE 'Não' END AS gerente, "
                   "CASE WHEN bloqueado THEN 'Sim' ELSE 'Não' END AS bloqueado, "
                   "tentativas_falhas FROM operadores ORDER BY nome");
     if (!query.exec()) {
@@ -187,6 +210,17 @@ void Operador_repository::listar(QSqlQueryModel *model)
         return;
     }
     model->setQuery(std::move(query));
+}
+
+int Operador_repository::contarGerentesAtivos()
+{
+    if (!DatabaseConnection_service::open())
+        return 0;
+    QSqlQuery query(db);
+    query.prepare("SELECT COUNT(*) FROM operadores WHERE gerente = TRUE AND ativo = TRUE");
+    if (!query.exec() || !query.next())
+        return 0;
+    return query.value(0).toInt();
 }
 
 bool Operador_repository::nomeExiste(const QString &nome, qlonglong ignorarId)

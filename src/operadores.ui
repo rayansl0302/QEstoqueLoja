@@ -120,6 +120,16 @@ QTableView { alternate-background-color: #f1f5f9; }</string>
            </widget>
           </item>
           <item row="3" column="0" colspan="2">
+           <widget class="QCheckBox" name="Chk_Gerente">
+            <property name="toolTip">
+             <string>Gerente pode abrir histórico de caixas, cadastro de operadores, configurações e relatórios gerenciais.</string>
+            </property>
+            <property name="text">
+             <string>É gerente</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0" colspan="2">
            <widget class="QPushButton" name="Btn_Cadastrar">
             <property name="text">
              <string>Cadastrar</string>
@@ -156,14 +166,21 @@ QTableView { alternate-background-color: #f1f5f9; }</string>
             </property>
            </widget>
           </item>
-          <item>
-           <widget class="QPushButton" name="Btn_AtivarDesativar">
-            <property name="text">
-             <string>Ativar / Desativar</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
+           <item>
+            <widget class="QPushButton" name="Btn_AtivarDesativar">
+             <property name="text">
+              <string>Ativar / Desativar</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="Btn_Gerente">
+             <property name="text">
+              <string>Marcar / Desmarcar como Gerente</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
         </widget>
        </item>
        <item>

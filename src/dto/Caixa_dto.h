@@ -33,10 +33,20 @@ struct MovimentacaoCaixaDTO {
     QString motivo;
     qlonglong idVenda = 0;
     qlonglong idEntradaVenda = 0;
-    qlonglong idOperador = 0;
+    qlonglong idOperador = 0;            // dono do caixa (quem abriu)
+    // -1 = ainda não registrado (NULL no banco); 0 = entrada pelo PIN geral do gerente
+    qlonglong idOperadorSessao = -1;     // quem estava logado quando a movimentação aconteceu
     QString nomeOperador;
+    QString nomeOperadorSessao;
     bool estornado = false;
     QString dataHora;
+};
+
+// Operador da sessão registrado no caixa. Somente id != id do dono do caixa aparece no relatório.
+struct OperadorSessaoCaixaDTO {
+    qlonglong id = 0;
+    QString nome;
+    qlonglong quantidade = 0;
 };
 
 // Linha do fechamento para uma forma de pagamento.
@@ -70,6 +80,8 @@ struct ResumoCaixaDTO {
     QMap<QString, double> esperadoPorForma;       // Dinheiro, Crédito, Débito, Pix
     QMap<QString, double> outrasFormas;           // vendas/recebimentos fora da conferência (ex.: "Não Sei")
     QList<FechamentoFormaDTO> fechamento;         // preenchido após fechar
+    // quem vendeu/movimentou sem ser o dono do caixa (vazio quando só ele operou)
+    QList<OperadorSessaoCaixaDTO> operadoresDaSessao;
 };
 
 #endif // CAIXA_DTO_H
