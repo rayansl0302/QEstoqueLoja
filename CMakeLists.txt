@@ -13,8 +13,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # set(CMAKE_PREFIX_PATH "C:/Qt/6.6.2/mingw_64/lib/cmake")
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools Sql PrintSupport Charts Xml Qml Core Network Core5Compat)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Sql PrintSupport Charts Xml Qml Core Network Core5Compat)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Svg Widgets LinguistTools Sql PrintSupport Charts Xml Qml Core Network Core5Compat)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Svg Widgets LinguistTools Sql PrintSupport Charts Xml Qml Core Network Core5Compat)
 if (CMAKE_SYSTEM MATCHES "Linux")
     find_package(QuaZip-Qt6)
 endif()
@@ -289,6 +289,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/services/barcode_service.h src/services/barcode_service.cpp
         src/util/codigobarrasutil.h src/util/codigobarrasutil.cpp
         src/util/tema.h src/util/tema.cpp
+        src/util/icones.h src/util/icones.cpp
         src/services/acbr_service.h src/services/acbr_service.cpp
         src/services/contingencia_service.h src/services/contingencia_service.cpp
         src/repository/contingencia_repository.h src/repository/contingencia_repository.cpp
@@ -416,7 +417,7 @@ if (WIN32)
     )
 endif()
 
-target_link_libraries(QEstoqueLoja PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt6::Sql Qt6::PrintSupport
+target_link_libraries(QEstoqueLoja PRIVATE Qt${QT_VERSION_MAJOR}::Svg Qt${QT_VERSION_MAJOR}::Widgets Qt6::Sql Qt6::PrintSupport
     zint Qt6::Charts QtRPT Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Xml
      Qt${QT_VERSION_MAJOR}::Qml Qt${QT_VERSION_MAJOR}::Network
 )

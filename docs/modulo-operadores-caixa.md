@@ -250,3 +250,7 @@ Padrão do projeto: DTO → repositório → serviço → janela `.ui`.
 ## Atalho de prévia (desenvolvimento)
 
 `QEstoqueLoja --preview-caixa <tela>` abre a janela correspondente (`operadores`, `abrir`, `fechar`, `historico`, `sangria`) para captura de tela. Não é fluxo de loja.
+
+## Interface
+
+Tema global em `src/util/tema.cpp`; tela inicial em botões (`src/menuinicial.*`); ícones SVG da biblioteca Lucide (ISC, `Imagens/icones/LICENSE-lucide.txt`) via `src/util/icones.*`, coloridos em tempo de execução. No histórico de caixas, a coluna Diferença mostra sobra (verde, +) ou falta (vermelho, −) do fechamento.

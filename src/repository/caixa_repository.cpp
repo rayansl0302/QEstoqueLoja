@@ -225,6 +225,7 @@ void Caixa_repository::listarHistorico(QSqlQueryModel *model, const QString &de,
         "c.aberto_em AS aberto_em, c.fechado_em AS fechado_em, c.troco_inicial AS troco_inicial, "
         "(SELECT COALESCE(SUM(v.valor_final), 0) FROM vendas2 v WHERE v.id_caixa = c.id "
         "   AND v.forma_pagamento <> 'Prazo') AS total_vendas, "
+        "(SELECT COALESCE(SUM(f.valor_informado), 0) FROM fechamentos_caixa f WHERE f.id_caixa = c.id) AS contado, "
         "(SELECT COALESCE(SUM(f.diferenca), 0) FROM fechamentos_caixa f WHERE f.id_caixa = c.id) AS diferenca "
         "FROM caixas c LEFT JOIN operadores o ON o.id = c.id_operador ";
     if (!de.isEmpty() && !ate.isEmpty())

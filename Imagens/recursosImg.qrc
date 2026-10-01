@@ -1,5 +1,31 @@
 <RCC>
     <qresource prefix="/icons"/>
+    <qresource prefix="/icones">
+        <file alias="arrow-left.svg">icones/arrow-left.svg</file>
+        <file alias="book-open.svg">icones/book-open.svg</file>
+        <file alias="calculator.svg">icones/calculator.svg</file>
+        <file alias="chart-column.svg">icones/chart-column.svg</file>
+        <file alias="circle-arrow-down.svg">icones/circle-arrow-down.svg</file>
+        <file alias="circle-arrow-up.svg">icones/circle-arrow-up.svg</file>
+        <file alias="file-text.svg">icones/file-text.svg</file>
+        <file alias="history.svg">icones/history.svg</file>
+        <file alias="house.svg">icones/house.svg</file>
+        <file alias="lock.svg">icones/lock.svg</file>
+        <file alias="log-out.svg">icones/log-out.svg</file>
+        <file alias="mail.svg">icones/mail.svg</file>
+        <file alias="package-plus.svg">icones/package-plus.svg</file>
+        <file alias="package.svg">icones/package.svg</file>
+        <file alias="receipt.svg">icones/receipt.svg</file>
+        <file alias="repeat.svg">icones/repeat.svg</file>
+        <file alias="settings.svg">icones/settings.svg</file>
+        <file alias="shield-check.svg">icones/shield-check.svg</file>
+        <file alias="shopping-cart.svg">icones/shopping-cart.svg</file>
+        <file alias="truck.svg">icones/truck.svg</file>
+        <file alias="user-cog.svg">icones/user-cog.svg</file>
+        <file alias="user.svg">icones/user.svg</file>
+        <file alias="users.svg">icones/users.svg</file>
+        <file alias="wallet.svg">icones/wallet.svg</file>
+    </qresource>
     <qresource prefix="/">
         <file>QEstoqueLOja/mkaoyvbl.png</file>
         <file>QEstoqueLOja/ICONEjanela.ico</file>

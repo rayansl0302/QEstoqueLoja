@@ -7,6 +7,73 @@
 #include <QHeaderView>
 #include <QMessageBox>
 #include <QDate>
+#include <QLocale>
+#include <QStyledItemDelegate>
+
+namespace {
+QString moeda(double v)
+{
+    return QLocale(QLocale::Portuguese, QLocale::Brazil).toCurrencyString(v, "R$ ");
+}
+
+// valores em reais, alinhados à direita
+class DelegateMoeda : public QStyledItemDelegate
+{
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+    QString displayText(const QVariant &value, const QLocale &) const override { return moeda(value.toDouble()); }
+    void initStyleOption(QStyleOptionViewItem *o, const QModelIndex &i) const override
+    {
+        QStyledItemDelegate::initStyleOption(o, i);
+        o->displayAlignment = Qt::AlignRight | Qt::AlignVCenter;
+    }
+};
+
+// só vale para caixa fechado (aberto ainda não foi contado): "—"
+class DelegateContado : public DelegateMoeda
+{
+public:
+    using DelegateMoeda::DelegateMoeda;
+    void initStyleOption(QStyleOptionViewItem *o, const QModelIndex &i) const override
+    {
+        DelegateMoeda::initStyleOption(o, i);
+        if (i.sibling(i.row(), 3).data().toString() == "ABERTO")
+            o->text = QStringLiteral("—");
+    }
+};
+
+// diferença do fechamento: + sobrou (verde), − faltou (vermelho), confere (cinza)
+class DelegateDiferenca : public DelegateMoeda
+{
+public:
+    using DelegateMoeda::DelegateMoeda;
+    void initStyleOption(QStyleOptionViewItem *o, const QModelIndex &i) const override
+    {
+        DelegateMoeda::initStyleOption(o, i);
+        if (i.sibling(i.row(), 3).data().toString() == "ABERTO") {
+            o->text = QStringLiteral("—");
+            return;
+        }
+        const double v = i.data().toDouble();
+        QFont f = o->font;
+        f.setBold(true);
+        o->font = f;
+        if (v > 0.004) {
+            o->text = "+" + moeda(v) + "  sobra";
+            o->palette.setColor(QPalette::Text, QColor("#15803D"));
+            o->palette.setColor(QPalette::HighlightedText, QColor("#15803D"));
+        } else if (v < -0.004) {
+            o->text = "−" + moeda(-v) + "  falta";
+            o->palette.setColor(QPalette::Text, QColor("#B91C1C"));
+            o->palette.setColor(QPalette::HighlightedText, QColor("#B91C1C"));
+        } else {
+            o->text = QStringLiteral("confere");
+            o->palette.setColor(QPalette::Text, QColor("#64748B"));
+            o->palette.setColor(QPalette::HighlightedText, QColor("#64748B"));
+        }
+    }
+};
+}
 
 HistoricoCaixas::HistoricoCaixas(QWidget *parent)
     : QDialog(parent)
@@ -15,11 +82,16 @@ HistoricoCaixas::HistoricoCaixas(QWidget *parent)
 {
     ui->setupUi(this);
     setWindowModality(Qt::ApplicationModal);
+    resize(qMax(width(), 1120), qMax(height(), 520));
 
     ui->Tview_Caixas->setModel(model);
     DelegateHora *delegateData = new DelegateHora(this);
     ui->Tview_Caixas->setItemDelegateForColumn(4, delegateData);
     ui->Tview_Caixas->setItemDelegateForColumn(5, delegateData);
+    ui->Tview_Caixas->setItemDelegateForColumn(6, new DelegateMoeda(this));
+    ui->Tview_Caixas->setItemDelegateForColumn(7, new DelegateMoeda(this));
+    ui->Tview_Caixas->setItemDelegateForColumn(8, new DelegateContado(this));
+    ui->Tview_Caixas->setItemDelegateForColumn(9, new DelegateDiferenca(this));
 
     const QDate hoje = QDate::currentDate();
     ui->DateEdt_De->blockSignals(true);
@@ -71,9 +143,10 @@ void HistoricoCaixas::atualizarTabela()
     model->setHeaderData(3, Qt::Horizontal, "Status");
     model->setHeaderData(4, Qt::Horizontal, "Abertura");
     model->setHeaderData(5, Qt::Horizontal, "Fechamento");
-    model->setHeaderData(6, Qt::Horizontal, "Troco inicial");
+    model->setHeaderData(6, Qt::Horizontal, "Começou com");
     model->setHeaderData(7, Qt::Horizontal, "Vendas");
-    model->setHeaderData(8, Qt::Horizontal, "Diferença");
+    model->setHeaderData(8, Qt::Horizontal, "Fechou com");
+    model->setHeaderData(9, Qt::Horizontal, "Diferença");
     ui->Tview_Caixas->setColumnHidden(0, true);
     ui->Tview_Caixas->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     ui->Tview_Caixas->resizeColumnsToContents();

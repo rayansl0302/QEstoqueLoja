@@ -18,8 +18,8 @@ public:
 
     void definirSaudacao(const QString &titulo, const QString &subtitulo);
     void adicionarGrupo(const QString &titulo);
-    // emoji: ícone do botão; destaque: botão azul cheio (ação principal)
-    void adicionarBotao(const QString &emoji, const QString &titulo, const QString &dica,
+    // icone: nome do SVG em Imagens/icones; destaque: botão azul cheio (ação principal)
+    void adicionarBotao(const QString &icone, const QString &titulo, const QString &dica,
                         std::function<void()> acao, bool destaque = false);
 
 private:

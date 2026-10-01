@@ -61,6 +61,7 @@
 #include "loginoperador.h"
 #include "logacessodialog.h"
 #include "menuinicial.h"
+#include "util/icones.h"
 #include <QStackedWidget>
 #include <QStandardPaths>
 #include <QFileInfo>
@@ -547,37 +548,38 @@ void MainWindow::montarMenuInicial()
 
     auto *m = menuInicial;
     m->adicionarGrupo("Atendimento");
-    m->adicionarBotao("🛒", "Vender (PDV)", "Abre a tela de venda (F5)", [this]() { abrirPdv(); }, true);
-    m->adicionarBotao("🧾", "Vendas", "Consultar e gerenciar vendas", [this]() { ui->Btn_Venda->click(); });
-    m->adicionarBotao("📝", "Orçamentos", "Criar e consultar orçamentos", [this]() { ui->Btn_Orcamento->click(); });
+    m->adicionarBotao("shopping-cart", "Vender (PDV)", "Abre a tela de venda (F5)", [this]() { abrirPdv(); }, true);
+    m->adicionarBotao("receipt", "Vendas", "Consultar e gerenciar vendas", [this]() { ui->Btn_Venda->click(); });
+    m->adicionarBotao("file-text", "Orçamentos", "Criar e consultar orçamentos", [this]() { ui->Btn_Orcamento->click(); });
 
     m->adicionarGrupo("Cadastros");
-    m->adicionarBotao("📦", "Produtos", "Lista de produtos e estoque", [this]() { irParaProdutos(); });
-    m->adicionarBotao("➕", "Cadastrar produto", "Adicionar um novo produto", [this]() { ui->Btn_AddProd->click(); });
-    m->adicionarBotao("👥", "Clientes", "Cadastro de clientes", [this]() { ui->Btn_Clientes->click(); });
-    m->adicionarBotao("📥", "Compras", "Entrada de mercadorias", [this]() { ui->Btn_Entradas->click(); });
+    m->adicionarBotao("package", "Produtos", "Lista de produtos e estoque", [this]() { irParaProdutos(); });
+    m->adicionarBotao("package-plus", "Cadastrar produto", "Adicionar um novo produto", [this]() { ui->Btn_AddProd->click(); });
+    m->adicionarBotao("users", "Clientes", "Cadastro de clientes", [this]() { ui->Btn_Clientes->click(); });
+    m->adicionarBotao("truck", "Compras", "Entrada de mercadorias", [this]() { ui->Btn_Entradas->click(); });
 
     m->adicionarGrupo("Caixa");
-    m->adicionarBotao("💰", "Abrir caixa", "Abrir o seu caixa", [this]() { abrirCaixaClicked(); });
-    m->adicionarBotao("🔒", "Fechar caixa", "Conferir e fechar o seu caixa", [this]() { fecharCaixaClicked(); });
-    m->adicionarBotao("⬇️", "Sangria", "Retirar dinheiro do caixa", [this]() { sangriaClicked(); });
-    m->adicionarBotao("⬆️", "Suprimento", "Colocar dinheiro no caixa", [this]() { suprimentoClicked(); });
-    m->adicionarBotao("🗂️", "Histórico de caixas", "Caixas abertos e fechados", [this]() { historicoCaixaClicked(); });
+    m->adicionarBotao("wallet", "Abrir caixa", "Abrir o seu caixa", [this]() { abrirCaixaClicked(); });
+    m->adicionarBotao("lock", "Fechar caixa", "Conferir e fechar o seu caixa", [this]() { fecharCaixaClicked(); });
+    m->adicionarBotao("circle-arrow-down", "Sangria", "Retirar dinheiro do caixa", [this]() { sangriaClicked(); });
+    m->adicionarBotao("circle-arrow-up", "Suprimento", "Colocar dinheiro no caixa", [this]() { suprimentoClicked(); });
+    m->adicionarBotao("history", "Histórico de caixas", "Caixas abertos e fechados", [this]() { historicoCaixaClicked(); });
 
     m->adicionarGrupo("Gestão e fiscal");
-    m->adicionarBotao("📊", "Relatórios", "Relatórios gerenciais", [this]() { ui->Btn_Relatorios->click(); });
-    m->adicionarBotao("🧑‍💼", "Operadores", "Cadastro de operadores de caixa", [this]() { operadoresClicked(); });
-    m->adicionarBotao("🛡️", "Log de acesso", "Quem entrou e o que fez", [this]() { logAcessoClicked(); });
-    m->adicionarBotao("🧮", "Monitor fiscal", "Notas fiscais e contingência", [this]() { ui->actionMonitor_Fiscal->trigger(); });
-    m->adicionarBotao("✉️", "Enviar ao contador", "Enviar as notas ao contador", [this]() { ui->actionEnviar_Notas_Contador->trigger(); });
+    m->adicionarBotao("chart-column", "Relatórios", "Relatórios gerenciais", [this]() { ui->Btn_Relatorios->click(); });
+    m->adicionarBotao("user-cog", "Operadores", "Cadastro de operadores de caixa", [this]() { operadoresClicked(); });
+    m->adicionarBotao("shield-check", "Log de acesso", "Quem entrou e o que fez", [this]() { logAcessoClicked(); });
+    m->adicionarBotao("calculator", "Monitor fiscal", "Notas fiscais e contingência", [this]() { ui->actionMonitor_Fiscal->trigger(); });
+    m->adicionarBotao("mail", "Enviar ao contador", "Enviar as notas ao contador", [this]() { ui->actionEnviar_Notas_Contador->trigger(); });
 
     m->adicionarGrupo("Sistema");
-    m->adicionarBotao("⚙️", "Configurações", "Empresa, fiscal, e-mail e outros", [this]() { ui->actionConfig->trigger(); });
-    m->adicionarBotao("📖", "Ajuda", "Documentação do sistema", [this]() { ui->actionDocumenta_o->trigger(); });
-    m->adicionarBotao("🚪", "Sair da conta", "Encerrar a sessão do operador", [this]() { sairSessaoClicked(); });
+    m->adicionarBotao("settings", "Configurações", "Empresa, fiscal, e-mail e outros", [this]() { ui->actionConfig->trigger(); });
+    m->adicionarBotao("book-open", "Ajuda", "Documentação do sistema", [this]() { ui->actionDocumenta_o->trigger(); });
+    m->adicionarBotao("log-out", "Sair da conta", "Encerrar a sessão do operador", [this]() { sairSessaoClicked(); });
 
     // na lista de produtos: botão para voltar ao menu
-    auto *btnInicio = new QPushButton(QStringLiteral("⬅  Início"), ui->paginaProdutos);
+    auto *btnInicio = new QPushButton(QStringLiteral("  Início"), ui->paginaProdutos);
+    btnInicio->setIcon(Icones::icone("arrow-left", QColor("#1E3A5F"), 18));
     btnInicio->setCursor(Qt::PointingHandCursor);
     btnInicio->setToolTip("Voltar ao menu inicial");
     btnInicio->setStyleSheet("QPushButton { background: white; color: #1E3A5F; border: 1px solid #C9D3DF;"
@@ -623,19 +625,25 @@ void MainWindow::montarMenuCaixa()
 
     btnOperador = new QToolButton(this);
     btnOperador->setFont(fonteRodape);
-    btnOperador->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    btnOperador->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    btnOperador->setIconSize(QSize(20, 20));
     btnOperador->setPopupMode(QToolButton::InstantPopup);
     btnOperador->setCursor(Qt::PointingHandCursor);
     btnOperador->setToolTip("Operador logado — clique para trocar de operador ou sair da conta");
     QMenu *menuOperador = new QMenu(btnOperador);
-    menuOperador->addAction(QStringLiteral("🔄  Trocar operador..."), this, &MainWindow::trocarOperadorClicked);
-    menuOperador->addAction(QStringLiteral("🚪  Sair da conta"), this, &MainWindow::sairSessaoClicked);
+    menuOperador->addAction(Icones::icone("repeat", QColor("#1E3A5F"), 18), QStringLiteral("Trocar operador..."),
+                            this, &MainWindow::trocarOperadorClicked);
+    menuOperador->addAction(Icones::icone("log-out", QColor("#B91C1C"), 18), QStringLiteral("Sair da conta"),
+                            this, &MainWindow::sairSessaoClicked);
     btnOperador->setMenu(menuOperador);
     ui->statusbar->addPermanentWidget(btnOperador);
 
     btnSair = new QToolButton(this);
     btnSair->setFont(fonteRodape);
-    btnSair->setText(QStringLiteral("🚪  Sair da conta"));
+    btnSair->setText(QStringLiteral(" Sair da conta"));
+    btnSair->setIcon(Icones::icone("log-out", QColor(Qt::white), 20));
+    btnSair->setIconSize(QSize(20, 20));
+    btnSair->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     btnSair->setCursor(Qt::PointingHandCursor);
     btnSair->setToolTip("Encerrar a sessão do operador atual");
     btnSair->setStyleSheet(
@@ -682,16 +690,19 @@ void MainWindow::atualizarIndicadorSessao()
     if (btnSair)
         btnSair->setVisible(logado);
     if (!logado) {
-        btnOperador->setText(QStringLiteral("👤  Sem operador"));
+        btnOperador->setIcon(Icones::icone("user", QColor("#B91C1C"), 20));
+        btnOperador->setText(QStringLiteral(" Sem operador"));
         btnOperador->setStyleSheet(estiloChip("rgb(185, 28, 28)"));
         return;
     }
     if (Sessao_service::instancia()->bloqueada()) {
-        btnOperador->setText(QStringLiteral("🔒  %1 — sessão bloqueada").arg(sessao.nomeOperador));
+        btnOperador->setIcon(Icones::icone("lock", QColor("#B45309"), 20));
+        btnOperador->setText(QStringLiteral(" %1 — sessão bloqueada").arg(sessao.nomeOperador));
         btnOperador->setStyleSheet(estiloChip("rgb(180, 83, 9)"));
         return;
     }
-    btnOperador->setText(QStringLiteral("👤  %1%2  ▾")
+    btnOperador->setIcon(Icones::icone("user", QColor("#1E40AF"), 20));
+    btnOperador->setText(QStringLiteral(" %1%2  ▾")
                              .arg(sessao.nomeOperador,
                                   sessao.gerente ? QStringLiteral("  ·  Gerente") : QString()));
     btnOperador->setStyleSheet(estiloChip("rgb(30, 64, 175)"));
@@ -709,11 +720,11 @@ void MainWindow::setModoDesenvolvimento(bool ativo)
     if (!ativo)
         return;
     QLabel *tarja = new QLabel(
-        QStringLiteral("MODO DESENVOLVIMENTO — login automático ativo, sem validação de PIN. "
-                       "Nunca use em produção."),
+        QStringLiteral(" MODO DESENVOLVIMENTO — login sem PIN "),
         this);
     tarja->setObjectName(QStringLiteral("Lbl_ModoDesenvolvimento"));
     tarja->setAlignment(Qt::AlignCenter);
+    tarja->setToolTip(QStringLiteral("Login automático ativo, sem validação de PIN. Nunca use em produção."));
     tarja->setStyleSheet(
         "background: rgb(180, 83, 9); color: white; font-weight: 700; padding: 4px;");
     // fica no rodapé: o layout da tela principal é em grade e a tarja não deve empurrar nada
@@ -960,11 +971,13 @@ void MainWindow::atualizarIndicadorCaixa()
     Caixa_service caixaServ;
     const CaixaDTO caixa = caixaServ.caixaAtual();
     if (caixa.aberto()) {
-        lblCaixaStatus->setText(QString("  🟢 Seu caixa: aberto · #%1  ").arg(caixa.id));
+        lblCaixaStatus->setTextFormat(Qt::RichText);
+        lblCaixaStatus->setText(QString("  <span style='color:#16A34A'>&#9679;</span> Seu caixa: aberto · #%1  ").arg(caixa.id));
         lblCaixaStatus->setStyleSheet("background: white; color: rgb(21, 128, 61); border: 2px solid rgb(21, 128, 61);"
                                       " border-radius: 8px; padding: 4px 8px;");
     } else {
-        lblCaixaStatus->setText("  🔴 Seu caixa: fechado  ");
+        lblCaixaStatus->setTextFormat(Qt::RichText);
+        lblCaixaStatus->setText("  <span style='color:#DC2626'>&#9679;</span> Seu caixa: fechado  ");
         lblCaixaStatus->setStyleSheet("background: white; color: rgb(185, 28, 28); border: 2px solid rgb(185, 28, 28);"
                                       " border-radius: 8px; padding: 4px 8px;");
     }

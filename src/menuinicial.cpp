@@ -1,5 +1,7 @@
 #include "menuinicial.h"
 
+#include "util/icones.h"
+
 #include <QGridLayout>
 #include <QLabel>
 #include <QPushButton>
@@ -90,7 +92,7 @@ void MenuInicial::adicionarGrupo(const QString &titulo)
     conteudo->insertLayout(indiceStretch + 1, grade);
 }
 
-void MenuInicial::adicionarBotao(const QString &emoji, const QString &titulo, const QString &dica,
+void MenuInicial::adicionarBotao(const QString &nomeIcone, const QString &titulo, const QString &dica,
                                  std::function<void()> acao, bool destaque)
 {
     if (!gradeAtual)
@@ -107,9 +109,10 @@ void MenuInicial::adicionarBotao(const QString &emoji, const QString &titulo, co
     layout->setContentsMargins(6, 10, 6, 8);
     layout->setSpacing(4);
 
-    auto *icone = new QLabel(emoji);
+    auto *icone = new QLabel;
+    icone->setPixmap(Icones::pixmap(nomeIcone, destaque ? QColor(Qt::white) : QColor("#2B84BF"), 40));
     icone->setAlignment(Qt::AlignCenter);
-    icone->setStyleSheet(QStringLiteral("font-size: 28pt; background: transparent; border: none;"));
+    icone->setStyleSheet(QStringLiteral("background: transparent; border: none;"));
     icone->setAttribute(Qt::WA_TransparentForMouseEvents);
 
     auto *texto = new QLabel(titulo);
