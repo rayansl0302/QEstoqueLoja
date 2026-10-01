@@ -41,6 +41,7 @@ private slots:
     void sessao_cai_quando_operador_e_desativado();
     void sessao_com_venda_em_andamento_so_bloqueia();
     void autorizador_bloqueia_administracao_sem_gerente();
+    void caixa_e_do_operador_logado_e_abre_sem_pin_novo();
 };
 
 #endif // TEST_CAIXA_SERVICE_H

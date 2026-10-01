@@ -119,11 +119,12 @@ MainWindow::MainWindow(QWidget *parent)
     // coluna descricao
     ui->Tview_Produtos->setColumnWidth(2, 750);
     //preco
-    ui->Tview_Produtos->setColumnWidth(3, 90);
+    ui->Tview_Produtos->setColumnWidth(3, 100);
 
-    // coluna quantidade
-    ui->Tview_Produtos->setColumnWidth(1, 85);
-    ui->Tview_Produtos->setColumnWidth(4,110);
+    // coluna quantidade (o cabeçalho em negrito precisa de folga) e código de barras
+    ui->Tview_Produtos->setColumnWidth(0, 70);
+    ui->Tview_Produtos->setColumnWidth(1, 115);
+    ui->Tview_Produtos->setColumnWidth(4, 160);
 
     // ações para menu de contexto tabela produtos
     actionMenuAlterarProd = new QAction(this);
@@ -182,6 +183,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(sessao, &Sessao_service::sessaoBloqueada, this, &MainWindow::sessaoBloqueada);
     connect(sessao, &Sessao_service::sessaoInvalidada, this, &MainWindow::sessaoInvalidada);
     connect(sessao, &Sessao_service::sessaoMudou, this, &MainWindow::atualizarIndicadorSessao);
+    connect(sessao, &Sessao_service::sessaoMudou, this, &MainWindow::atualizarIndicadorCaixa);
     // Cada tela de venda (PDV, nova venda na lista de Vendas) se registra em Sessao_service e
     // informa se tem itens no carrinho: é isso que trava o logout e bloqueia o timeout.
     // A sessão só existe depois que main.cpp rodar o login, então o timeout
@@ -486,8 +488,36 @@ void MainWindow::montarMenuCaixa()
     menuSessao->addAction("Log de acesso...", this, &MainWindow::logAcessoClicked);
     ui->menuBar->insertMenu(ui->menuAjuda->menuAction(), menuSessao);
 
-    lblSessao = new QLabel(this);
-    ui->statusbar->addPermanentWidget(lblSessao);
+    // Rodapé: quem está logado (chip grande, com menu) + botão de sair sempre à vista.
+    ui->statusbar->setMinimumHeight(44);
+    QFont fonteRodape = font();
+    fonteRodape.setPointSize(qMax(font().pointSize(), 9) + 2);
+    fonteRodape.setBold(true);
+
+    btnOperador = new QToolButton(this);
+    btnOperador->setFont(fonteRodape);
+    btnOperador->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    btnOperador->setPopupMode(QToolButton::InstantPopup);
+    btnOperador->setCursor(Qt::PointingHandCursor);
+    btnOperador->setToolTip("Operador logado — clique para trocar de operador ou sair da conta");
+    QMenu *menuOperador = new QMenu(btnOperador);
+    menuOperador->addAction(QStringLiteral("🔄  Trocar operador..."), this, &MainWindow::trocarOperadorClicked);
+    menuOperador->addAction(QStringLiteral("🚪  Sair da conta"), this, &MainWindow::sairSessaoClicked);
+    btnOperador->setMenu(menuOperador);
+    ui->statusbar->addPermanentWidget(btnOperador);
+
+    btnSair = new QToolButton(this);
+    btnSair->setFont(fonteRodape);
+    btnSair->setText(QStringLiteral("🚪  Sair da conta"));
+    btnSair->setCursor(Qt::PointingHandCursor);
+    btnSair->setToolTip("Encerrar a sessão do operador atual");
+    btnSair->setStyleSheet(
+        "QToolButton { background: rgb(185, 28, 28); color: white; border: 1px solid rgb(127, 29, 29);"
+        " border-radius: 6px; padding: 5px 14px; }"
+        "QToolButton:hover { background: rgb(220, 38, 38); }"
+        "QToolButton:pressed { background: rgb(127, 29, 29); }");
+    connect(btnSair, &QToolButton::clicked, this, &MainWindow::sairSessaoClicked);
+    ui->statusbar->addPermanentWidget(btnSair);
     atualizarIndicadorSessao();
 
     lblAvisoTimeout = new QLabel(this);
@@ -496,6 +526,7 @@ void MainWindow::montarMenuCaixa()
     ui->statusbar->addWidget(lblAvisoTimeout);
 
     lblCaixaStatus = new QLabel(this);
+    lblCaixaStatus->setFont(fonteRodape);
     ui->statusbar->addPermanentWidget(lblCaixaStatus);
 
     // o caixa pode ser aberto/fechado por outra tela ou por outro computador: mantém o rodapé em dia
@@ -504,25 +535,39 @@ void MainWindow::montarMenuCaixa()
     timerCaixa->start(15000);
 }
 
+namespace {
+// chip branco com borda colorida: legível sobre qualquer cor do tema
+QString estiloChip(const QString &cor)
+{
+    return QStringLiteral("QToolButton { background: white; color: %1; border: 2px solid %1;"
+                          " border-radius: 8px; padding: 4px 14px; }"
+                          "QToolButton::menu-indicator { image: none; }"
+                          "QToolButton:hover { background: rgb(243, 244, 246); }").arg(cor);
+}
+}
+
 void MainWindow::atualizarIndicadorSessao()
 {
-    if (!lblSessao)
+    if (!btnOperador)
         return;
     const SessaoDTO sessao = Sessao_service::instancia()->sessao();
-    if (sessao.nomeOperador.isEmpty()) {
-        lblSessao->setText(" Sem operador ");
-        lblSessao->setStyleSheet("color: rgb(185, 28, 28); font-weight: 600;");
+    const bool logado = !sessao.nomeOperador.isEmpty();
+    if (btnSair)
+        btnSair->setVisible(logado);
+    if (!logado) {
+        btnOperador->setText(QStringLiteral("👤  Sem operador"));
+        btnOperador->setStyleSheet(estiloChip("rgb(185, 28, 28)"));
         return;
     }
     if (Sessao_service::instancia()->bloqueada()) {
-        lblSessao->setText(QString(" %1 — SESSÃO BLOQUEADA ").arg(sessao.nomeOperador));
-        lblSessao->setStyleSheet("color: rgb(180, 83, 9); font-weight: 700;");
+        btnOperador->setText(QStringLiteral("🔒  %1 — sessão bloqueada").arg(sessao.nomeOperador));
+        btnOperador->setStyleSheet(estiloChip("rgb(180, 83, 9)"));
         return;
     }
-    lblSessao->setText(QString(" %1%2 ")
-                           .arg(sessao.nomeOperador,
-                                sessao.gerente ? QStringLiteral(" (gerente)") : QString()));
-    lblSessao->setStyleSheet("color: rgb(30, 64, 175); font-weight: 600;");
+    btnOperador->setText(QStringLiteral("👤  %1%2  ▾")
+                             .arg(sessao.nomeOperador,
+                                  sessao.gerente ? QStringLiteral("  ·  Gerente") : QString()));
+    btnOperador->setStyleSheet(estiloChip("rgb(30, 64, 175)"));
 }
 
 void MainWindow::aplicarSessao()
@@ -534,20 +579,18 @@ void MainWindow::aplicarSessao()
 void MainWindow::setModoDesenvolvimento(bool ativo)
 {
     modoDesenvolvimento = ativo;
-    if (!ativo || !ui->centralwidget->layout())
+    if (!ativo)
         return;
     QLabel *tarja = new QLabel(
         QStringLiteral("MODO DESENVOLVIMENTO — login automático ativo, sem validação de PIN. "
                        "Nunca use em produção."),
-        ui->centralwidget);
+        this);
     tarja->setObjectName(QStringLiteral("Lbl_ModoDesenvolvimento"));
     tarja->setAlignment(Qt::AlignCenter);
     tarja->setStyleSheet(
         "background: rgb(180, 83, 9); color: white; font-weight: 700; padding: 4px;");
-    if (auto *box = qobject_cast<QBoxLayout *>(ui->centralwidget->layout()))
-        box->insertWidget(0, tarja);
-    else
-        tarja->setGeometry(0, 0, ui->centralwidget->width(), tarja->sizeHint().height());
+    // fica no rodapé: o layout da tela principal é em grade e a tarja não deve empurrar nada
+    ui->statusbar->insertWidget(0, tarja);
 }
 
 bool MainWindow::exigirGerente(const QString &acao)
@@ -597,11 +640,6 @@ bool MainWindow::exigirGerente(const QString &acao)
 
 void MainWindow::bloqueioParaTroca(QString *motivo) const
 {
-    Caixa_service caixaServ;
-    if (caixaServ.caixaAbertoNoTerminal().aberto()) {
-        *motivo = QStringLiteral("Há um caixa aberto neste terminal.\nFeche o caixa antes de sair da conta ou trocar de operador.");
-        return;
-    }
     // qualquer tela de venda com itens no carrinho (PDV, nova venda na lista de Vendas...)
     if (Sessao_service::instancia()->temVendaEmAndamento()) {
         *motivo = QStringLiteral("Há uma venda em andamento.\nFinalize ou cancele a venda antes de sair da conta ou trocar de operador.");
@@ -713,8 +751,11 @@ void MainWindow::trocarOperadorClicked()
 void MainWindow::sairSessaoClicked()
 {
     const auto resp = QMessageBox::question(this, "Sair da conta",
-        QStringLiteral("Sair da conta de %1?\nO login será pedido de novo.")
-            .arg(Sessao_service::instancia()->nomeOperador()),
+        QStringLiteral("Sair da conta de %1?\nO login será pedido de novo.%2")
+            .arg(Sessao_service::instancia()->nomeOperador(),
+                 Caixa_service().caixaAtual().aberto()
+                     ? QStringLiteral("\n\nO seu caixa continua aberto e pode ser fechado depois.")
+                     : QString()),
         QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     if (resp != QMessageBox::Yes)
         return;
@@ -790,13 +831,15 @@ void MainWindow::atualizarIndicadorCaixa()
     if (!lblCaixaStatus)
         return;
     Caixa_service caixaServ;
-    const CaixaDTO caixa = caixaServ.caixaAbertoNoTerminal();
+    const CaixaDTO caixa = caixaServ.caixaAtual();
     if (caixa.aberto()) {
-        lblCaixaStatus->setText(QString(" Caixa aberto · %1 · #%2 ").arg(caixa.nomeOperador).arg(caixa.id));
-        lblCaixaStatus->setStyleSheet("color: rgb(21, 128, 61); font-weight: 600;");
+        lblCaixaStatus->setText(QString("  🟢 Seu caixa: aberto · #%1  ").arg(caixa.id));
+        lblCaixaStatus->setStyleSheet("background: white; color: rgb(21, 128, 61); border: 2px solid rgb(21, 128, 61);"
+                                      " border-radius: 8px; padding: 4px 8px;");
     } else {
-        lblCaixaStatus->setText(" Caixa fechado ");
-        lblCaixaStatus->setStyleSheet("color: rgb(185, 28, 28); font-weight: 600;");
+        lblCaixaStatus->setText("  🔴 Seu caixa: fechado  ");
+        lblCaixaStatus->setStyleSheet("background: white; color: rgb(185, 28, 28); border: 2px solid rgb(185, 28, 28);"
+                                      " border-radius: 8px; padding: 4px 8px;");
     }
 }
 
@@ -810,8 +853,8 @@ bool MainWindow::garantirCaixaAberto()
 void MainWindow::abrirCaixaClicked()
 {
     Caixa_service caixaServ;
-    if (caixaServ.caixaAbertoNoTerminal().aberto()) {
-        QMessageBox::information(this, "Caixa", "Já existe um caixa aberto neste terminal.");
+    if (caixaServ.caixaAtual().aberto()) {
+        QMessageBox::information(this, "Caixa", "Você já tem um caixa aberto.");
         return;
     }
     AberturaCaixa dlg(this);
@@ -822,8 +865,8 @@ void MainWindow::abrirCaixaClicked()
 void MainWindow::fecharCaixaClicked()
 {
     Caixa_service caixaServ;
-    if (!caixaServ.caixaAbertoNoTerminal().aberto()) {
-        QMessageBox::information(this, "Caixa", "Nenhum caixa aberto neste terminal.");
+    if (!caixaServ.caixaAtual().aberto()) {
+        QMessageBox::information(this, "Caixa", "Você não tem caixa aberto.");
         return;
     }
     FechamentoCaixa dlg(this);

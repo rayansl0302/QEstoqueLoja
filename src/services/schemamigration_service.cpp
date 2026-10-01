@@ -1832,6 +1832,32 @@ SchemaMigration_service::Resultado SchemaMigration_service::update() {
             qDebug() << "Migracao para versao 17 concluida.";
             break;
         }
+        case 17:
+        {
+            // versao 18: o caixa passa a ser do operador, não do computador. Vários operadores podem
+            // ter caixa aberto no mesmo terminal (um por operador, índice ux_caixas_aberto_operador).
+            if (!db.transaction()) {
+                qDebug() << "Error: unable to start transaction";
+                return {false, SchemaErro::ErroMigracao, "Erro ao iniciar migracao 18", dbSchemaVersion};
+            }
+            QSqlQuery query(db);
+            if (!query.exec("DROP INDEX IF EXISTS ux_caixas_aberto_terminal")) {
+                qDebug() << "Erro migracao 18:" << query.lastError().text();
+                db.rollback();
+                return {false, SchemaErro::ErroMigracao, "Erro na migracao 18 (caixa por operador)", dbSchemaVersion};
+            }
+            if (!setSchemaVersion(18)) {
+                db.rollback();
+                return {false, SchemaErro::ErroMigracao, "Erro ao gravar versao 18", dbSchemaVersion};
+            }
+            if (!db.commit()) {
+                db.rollback();
+                return {false, SchemaErro::ErroMigracao, "Erro ao confirmar migracao 18", dbSchemaVersion};
+            }
+            dbSchemaVersion = 18;
+            qDebug() << "Migracao para versao 18 concluida.";
+            break;
+        }
 
         }
     }

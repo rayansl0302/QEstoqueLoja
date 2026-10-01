@@ -1,4 +1,5 @@
     #include "mainwindow.h"
+    #include "util/tema.h"
     #include "loginoperador.h"
     #include "operadores.h"
 
@@ -79,6 +80,7 @@
         lightPalette.setColor(QPalette::HighlightedText, Qt::white);
 
         a.setPalette(lightPalette);
+        Tema::aplicar(a);
 
         QTranslator translator;
         const QStringList uiLanguages = QLocale::system().uiLanguages();

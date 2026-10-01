@@ -49,6 +49,15 @@ void AberturaCaixa::carregarOperadores()
     if (idx >= 0)
         ui->CBox_Operador->setCurrentIndex(idx);
 
+    // quem já entrou no sistema não digita o PIN de novo: o caixa abre no nome dele
+    Sessao_service *sessao = Sessao_service::instancia();
+    const bool logado = sessao->ativa() && !sessao->pinGeral() && ui->CBox_Operador->findData(idSessao) >= 0;
+    ui->CBox_Operador->setEnabled(!logado);
+    ui->Ledit_Pin->setVisible(!logado);
+    ui->label_2->setVisible(!logado);
+    if (logado)
+        ui->Ledit_Troco->setFocus();
+
     const bool temOperador = ui->CBox_Operador->count() > 0;
     ui->Btn_Abrir->setEnabled(temOperador);
     if (!temOperador)

@@ -32,6 +32,8 @@ Cancelar o login fecha o programa: sem sessão aceita nenhuma tela de venda abre
 
 ### Indicador
 
+No rodapé: chip grande com o operador logado (menu *Trocar operador* / *Sair da conta*), botão vermelho **Sair da conta** sempre à vista e o estado do **seu** caixa (🟢 aberto / 🔴 fechado).
+
 O rodapé da janela principal mostra `Nome` e `Nome (gerente)`. A tela de venda e a de lista de vendas repetem o indicador, para ficar claro quem responde pelo que está saindo.
 
 ### Matriz de acesso
@@ -43,7 +45,7 @@ O rodapé da janela principal mostra `Nome` e `Nome (gerente)`. A tela de venda 
 
 ### Troca, logout e expiração
 
-- **Caixa aberto no terminal** bloqueia troca e logout, inclusive para gerente (é o turno de alguém).
+- **O caixa é do operador logado**, não do computador: vários operadores podem ter caixa aberto no mesmo terminal (um por operador) e cada um só vê/usa o seu (`Caixa_service::caixaAtual()`). Trocar de operador ou sair da conta **não exige fechar o caixa**; ele continua aberto até o dono fechar. Quem já está logado abre o próprio caixa **sem digitar o PIN de novo**; abrir o de outro operador continua pedindo o PIN dele.
 - **Venda em andamento** (qualquer tela de venda registrada com itens no carrinho) bloqueia troca e logout, e a sessão **nunca expira**: só é **bloqueada**.
 - **Bloqueio de sessão**: por inatividade com venda em andamento, a tela fica travada e a venda preservada. Desbloqueia com o PIN do próprio operador ou com o PIN do gerente (este fica na auditoria como `DESBLOQUEIO_POR_GERENTE`).
 - **Revalidação**: a cada batida do relógio a sessão é conferida no banco; se o operador foi desativado/bloqueado/rebaixado ou o PIN geral mudou, a sessão é invalidada (`INVALIDADA`).
@@ -204,7 +206,7 @@ Não há reabertura de caixa na interface. O banco já tem colunas (`reaberto_po
 
 ---
 
-## Banco (migrações 14 a 17)
+## Banco (migrações 14 a 18)
 
 | Tabela | Conteúdo |
 | --- | --- |
@@ -216,13 +218,15 @@ Não há reabertura de caixa na interface. O banco já tem colunas (`reaberto_po
 | `auditoria_acesso` | (17) Ações sensíveis: data/hora, operador da sessão, terminal, ação, detalhe |
 | `config_caixa` | (migração 15) Chave/valor compartilhado: PIN do gerente e controle de bloqueio |
 
-Migração 15 também cria os índices únicos `ux_caixas_aberto_terminal` e `ux_caixas_aberto_operador` (`WHERE status = 'ABERTO'`). Se já existir duplicidade de dados antigos, o índice não é criado (o sistema abre normalmente e o serviço continua conferindo a regra).
+Migração 15 também cria os índices únicos `ux_caixas_aberto_terminal` (removido na 18) e `ux_caixas_aberto_operador` (`WHERE status = 'ABERTO'`). Se já existir duplicidade de dados antigos, o índice não é criado (o sistema abre normalmente e o serviço continua conferindo a regra).
 
 Migração 16 adiciona `operadores.gerente`, a tabela `sessoes_operador` (com o índice `idx_sessoes_abertas`) e a coluna `id_operador_sessao` em `vendas2`, `movimentacoes_caixa` e `entradas_vendas`, com o backfill descrito em *Quem responde pela venda*.
 
 Migração 17 cria `auditoria_acesso` e índices (`idx_auditoria_data`, `idx_vendas2_operador_sessao`, `idx_mov_operador_sessao`, `idx_entradas_operador_sessao`, `idx_entradas_vendas_caixa`, `idx_sessoes_entrada`). O backfill da 16 agora **aborta** a migração se falhar (antes o erro era engolido).
 
 **Atenção nas atualizações:** as migrações 16 e 17 não têm volta. Atualize **todos os terminais juntos**; um programa antigo abrindo um banco já migrado não entende as colunas novas.
+
+Migração 18 remove o índice `ux_caixas_aberto_terminal`: o caixa passa a ser por operador (`ux_caixas_aberto_operador` continua garantindo um aberto por operador).
 
 `vendas2.id_caixa` e `entradas_vendas.id_caixa` são anuláveis (legado).
 

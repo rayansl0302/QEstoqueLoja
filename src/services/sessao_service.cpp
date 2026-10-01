@@ -65,9 +65,6 @@ void Sessao_service::abrir(const SessaoDTO &nova, QString *erro, bool confiarNoD
         }
     }
 
-    Caixa_service caixaServ;
-    const CaixaDTO caixa = caixaServ.caixaAbertoNoTerminal();
-
     // a sessão entra sempre com o terminal real desta máquina: LoginOperador devolve um
     // DTO sem terminal e é aqui que ele é resolvido
     novaSessao.terminal = Caixa_service::terminalAtual();
@@ -82,6 +79,8 @@ void Sessao_service::abrir(const SessaoDTO &nova, QString *erro, bool confiarNoD
         qDebug() << "Sessao: nao foi possivel fechar sessoes pendentes:" << erroLog;
 
     sessao_ = novaSessao;
+    Caixa_service caixaServ;
+    const CaixaDTO caixa = caixaServ.caixaAtual();
     idLog = repo.registrarEntrada(sessao_, caixa.aberto() ? caixa.id : 0, erro);
 
     bloqueada_ = false;

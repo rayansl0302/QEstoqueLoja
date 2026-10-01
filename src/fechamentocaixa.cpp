@@ -14,7 +14,7 @@ FechamentoCaixa::FechamentoCaixa(QWidget *parent, qlonglong idCaixaAlvo)
     ui->setupUi(this);
     setWindowModality(Qt::ApplicationModal);
 
-    const CaixaDTO caixa = idCaixaAlvo > 0 ? caixaServ.getCaixa(idCaixaAlvo) : caixaServ.caixaAbertoNoTerminal();
+    const CaixaDTO caixa = idCaixaAlvo > 0 ? caixaServ.getCaixa(idCaixaAlvo) : caixaServ.caixaAtual();
     idCaixa = caixa.id;
     if (!caixa.aberto()) {
         ui->Lbl_Cabecalho->setText(idCaixaAlvo > 0 ? "Este caixa já está fechado."

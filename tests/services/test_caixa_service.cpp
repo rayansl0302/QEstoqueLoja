@@ -51,7 +51,7 @@ void TestCaixaService::fechar_acima_da_tolerancia_exige_justificativa()
 {
     TestDbFactory::garantirCaixaAberto();
     Caixa_service cs;
-    const CaixaDTO caixa = cs.caixaAbertoNoTerminal();
+    const CaixaDTO caixa = cs.caixaAtual();
     QVERIFY(caixa.aberto());
 
     QMap<QString, double> informados;
@@ -93,7 +93,7 @@ QMap<QString, double> informadosIguaisAoEsperado(const ResumoCaixaDTO &r)
 void fecharCaixaDoTerminalSeHouver()
 {
     Caixa_service cs;
-    const CaixaDTO c = cs.caixaAbertoNoTerminal();
+    const CaixaDTO c = cs.caixaAtual();
     if (!c.aberto())
         return;
     const auto r = cs.fecharCaixa(c.id, "1234", informadosIguaisAoEsperado(cs.resumo(c.id)), "");
@@ -183,7 +183,7 @@ void TestCaixaService::abrir_exige_pin_correto_e_operador_ativo()
     QVERIFY(!cs.abrirCaixa(0, "1234", 0, 0).ok);               // sem operador
     QVERIFY(!cs.abrirCaixa(op, "9999", 0, 0).ok);              // PIN errado
     QVERIFY(!cs.abrirCaixa(op, "1234", -5, 0).ok);             // troco negativo
-    QVERIFY(!cs.caixaAbertoNoTerminal().aberto());
+    QVERIFY(!cs.caixaAtual().aberto());
 
     QVERIFY(os.definirAtivo(op, false).ok);
     const auto inativo = cs.abrirCaixa(op, "1234", 0, 0);
@@ -192,7 +192,7 @@ void TestCaixaService::abrir_exige_pin_correto_e_operador_ativo()
 
     QVERIFY(os.definirAtivo(op, true).ok);
     QVERIFY(cs.abrirCaixa(op, "1234", 10, 5).ok);
-    const CaixaDTO aberto = cs.caixaAbertoNoTerminal();
+    const CaixaDTO aberto = cs.caixaAtual();
     QVERIFY(aberto.aberto());
     QCOMPARE(aberto.trocoInicial, 10.0);
     QCOMPARE(aberto.trocoSugerido, 5.0);         // os dois valores ficam gravados
@@ -201,12 +201,18 @@ void TestCaixaService::abrir_exige_pin_correto_e_operador_ativo()
 
 void TestCaixaService::abrir_recusa_segundo_caixa_no_terminal()
 {
-    QVERIFY(abrirCaixaNovo() > 0);
+    // o caixa é do operador: o de outro não trava o terminal. Já o mesmo operador não abre dois.
+    const qlonglong primeiro = abrirCaixaNovo();
+    QVERIFY(primeiro > 0);
     Caixa_service cs;
     const qlonglong outro = novoOperador("Op Segundo");
     const auto r = cs.abrirCaixa(outro, "1234", 0, 0);
-    QVERIFY(!r.ok);
-    QVERIFY(r.msg.contains("neste terminal"));
+    QVERIFY2(r.ok, qPrintable(r.msg));
+
+    const auto repetido = cs.abrirCaixa(outro, "1234", 0, 0);
+    QVERIFY(!repetido.ok);
+
+    QVERIFY(cs.fecharCaixa(r.id, "1234", informadosIguaisAoEsperado(cs.resumo(r.id)), "").ok);
 }
 
 void TestCaixaService::abrir_recusa_operador_com_caixa_em_outro_terminal()
@@ -244,7 +250,9 @@ void TestCaixaService::banco_impede_dois_caixas_abertos()
     CaixaDTO mesmoTerminal;
     mesmoTerminal.idOperador = op2;
     mesmoTerminal.terminal = "TERMINAL-UNICO-TESTE";
-    QCOMPARE(repo.abrir(mesmoTerminal), -1LL);      // índice único: um aberto por terminal
+    const qlonglong idMesmoTerminal = repo.abrir(mesmoTerminal);
+    QVERIFY(idMesmoTerminal > 0);                   // outro operador no mesmo terminal pode
+    QVERIFY(repo.fechar(idMesmoTerminal, "", {}));
 
     CaixaDTO mesmoOperador;
     mesmoOperador.idOperador = op1;
@@ -359,13 +367,13 @@ void TestCaixaService::fechar_valida_formas_pin_e_nao_fecha_duas_vezes()
     QVERIFY(!cs.fecharCaixa(id, "1234", negativo, "").ok);
 
     QVERIFY(!cs.fecharCaixa(id, "0000", completo, "").ok);          // PIN errado
-    QVERIFY(cs.caixaAbertoNoTerminal().aberto());                   // continua aberto
+    QVERIFY(cs.caixaAtual().aberto());                   // continua aberto
 
     QVERIFY(cs.fecharCaixa(id, "1234", completo, "").ok);
     const auto segunda = cs.fecharCaixa(id, "1234", completo, "");
     QVERIFY(!segunda.ok);
     QVERIFY(segunda.msg.contains("fechado"));
-    QVERIFY(!cs.caixaAbertoNoTerminal().aberto());
+    QVERIFY(!cs.caixaAtual().aberto());
 }
 
 void TestCaixaService::troco_sugerido_vem_do_dinheiro_contado_no_ultimo_fechamento()
@@ -472,7 +480,7 @@ void TestCaixaService::desativar_operador_com_caixa_aberto_e_recusado()
     QVERIFY(os.getPorId(op).ativo);
 
     // com o caixa fechado, desativar é permitido
-    const CaixaDTO aberto = cs.caixaAbertoNoTerminal();
+    const CaixaDTO aberto = cs.caixaAtual();
     QVERIFY(cs.fecharCaixa(aberto.id, "1234", informadosIguaisAoEsperado(cs.resumo(aberto.id)), "").ok);
     QVERIFY(os.definirAtivo(op, false).ok);
 }
@@ -609,7 +617,7 @@ void TestCaixaService::venda_registra_o_operador_da_sessao_e_nao_o_dono_do_caixa
 {
     TestDbFactory::garantirCaixaAberto();
     Caixa_service cs;
-    const CaixaDTO caixa = cs.caixaAbertoNoTerminal();
+    const CaixaDTO caixa = cs.caixaAtual();
     QVERIFY(caixa.aberto());
 
     // o dono do caixa é o operador do teste; quem vende é outro, logado na sessão
@@ -760,6 +768,33 @@ void TestCaixaService::sessao_com_venda_em_andamento_so_bloqueia()
     QVERIFY(!sess->temVendaEmAndamento());
     sess->pararTimeout();
     sess->encerrar("LOGOUT");
+}
+
+void TestCaixaService::caixa_e_do_operador_logado_e_abre_sem_pin_novo()
+{
+    Operador_service os;
+    Caixa_service cs;
+    const qlonglong a = novoOperadorDeTeste(os, "CxA ", "1357");
+    const qlonglong b = novoOperadorDeTeste(os, "CxB ", "2468");
+    QVERIFY(a > 0 && b > 0);
+    auto *sess = Sessao_service::instancia();
+
+    QVERIFY(abrirSessaoDe(a, os));
+    const auto ra = cs.abrirCaixa(a, QString(), 0, 0);        // logado: sem PIN
+    QVERIFY2(ra.ok, qPrintable(ra.msg));
+    QCOMPARE(cs.caixaAtual().id, ra.id);
+    sess->encerrar("TROCA_OPERADOR");                         // sair não exige fechar o caixa
+
+    QVERIFY(abrirSessaoDe(b, os));
+    QVERIFY(!cs.caixaAtual().aberto());                       // o caixa de A não é de B
+    QVERIFY(!cs.abrirCaixa(a, QString(), 0, 0).ok);           // abrir o de outro continua pedindo PIN
+    const auto rb = cs.abrirCaixa(b, QString(), 0, 0);
+    QVERIFY2(rb.ok, qPrintable(rb.msg));
+    QCOMPARE(cs.caixaAtual().id, rb.id);
+
+    QVERIFY(cs.fecharCaixa(rb.id, "2468", informadosIguaisAoEsperado(cs.resumo(rb.id)), "").ok);
+    sess->encerrar("LOGOUT");
+    QVERIFY(cs.fecharCaixa(ra.id, "1357", informadosIguaisAoEsperado(cs.resumo(ra.id)), "").ok);
 }
 
 void TestCaixaService::autorizador_bloqueia_administracao_sem_gerente()

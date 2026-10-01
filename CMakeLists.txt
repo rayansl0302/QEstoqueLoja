@@ -143,6 +143,7 @@ set(QESTOQUE_SOURCES
     src/util/ACBrMail.cpp
     src/util/vendasutil.cpp
     src/util/codigobarrasutil.cpp
+    src/util/tema.cpp
     src/util/chaveacessoutil.cpp
     src/util/escposcomandos.cpp
 
@@ -287,6 +288,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/util/printutil.h src/util/printutil.cpp
         src/services/barcode_service.h src/services/barcode_service.cpp
         src/util/codigobarrasutil.h src/util/codigobarrasutil.cpp
+        src/util/tema.h src/util/tema.cpp
         src/services/acbr_service.h src/services/acbr_service.cpp
         src/services/contingencia_service.h src/services/contingencia_service.cpp
         src/repository/contingencia_repository.h src/repository/contingencia_repository.cpp

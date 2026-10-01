@@ -26,8 +26,15 @@ QString Caixa_service::terminalAtual()
     return host.isEmpty() ? QStringLiteral("TERMINAL") : host.toUpper();
 }
 
-CaixaDTO Caixa_service::caixaAbertoNoTerminal()
+CaixaDTO Caixa_service::caixaAtual()
 {
+    // o caixa é de quem está logado: o de outro operador (aberto no mesmo computador) não atrapalha
+    Sessao_service *sessao = Sessao_service::instancia();
+    if (sessao->ativa() && sessao->idOperador() > 0) {
+        const CaixaDTO c = repo.getAbertoDoOperador(sessao->idOperador());
+        return (c.aberto() && c.terminal == terminalAtual()) ? c : CaixaDTO();
+    }
+    // sem sessão (ou PIN geral, que não é um operador): o caixa aberto mais recente deste terminal
     return repo.getAbertoNoTerminal(terminalAtual());
 }
 
@@ -49,17 +56,20 @@ Caixa_service::Resultado Caixa_service::abrirCaixa(qlonglong idOperador, const Q
     if (trocoInicial < 0)
         return {false, "O troco inicial não pode ser negativo."};
 
-    const auto pinOk = operadorServ.validarPin(idOperador, pin);
-    if (!pinOk.ok)
-        return {false, pinOk.msg};
-
-    const CaixaDTO noTerminal = repo.getAbertoNoTerminal(terminalAtual());
-    if (noTerminal.aberto())
-        return {false, QString("Já existe um caixa aberto neste terminal (operador %1, desde %2). "
-                               "Feche-o antes de abrir outro.")
-                           .arg(noTerminal.nomeOperador,
-                                QLocale().toString(QDateTime::fromString(noTerminal.abertoEm, Qt::ISODate),
-                                                   "dd/MM HH:mm"))};
+    // quem já entrou no sistema abre o próprio caixa sem digitar o PIN de novo; abrir o caixa de
+    // outro operador (ou sem sessão) continua pedindo o PIN dele
+    Sessao_service *sessao = Sessao_service::instancia();
+    const bool daSessao = sessao->ativa() && !sessao->pinGeral() && !sessao->bloqueada() &&
+                          sessao->idOperador() == idOperador;
+    if (daSessao) {
+        const OperadorDTO op = operadorServ.getPorId(idOperador);
+        if (op.id <= 0 || !op.ativo || op.bloqueado)
+            return {false, "Operador inválido, desativado ou bloqueado."};
+    } else {
+        const auto pinOk = operadorServ.validarPin(idOperador, pin);
+        if (!pinOk.ok)
+            return {false, pinOk.msg};
+    }
 
     const CaixaDTO doOperador = repo.getAbertoDoOperador(idOperador);
     if (doOperador.aberto())
@@ -75,9 +85,9 @@ Caixa_service::Resultado Caixa_service::abrirCaixa(qlonglong idOperador, const Q
     QString erro;
     const qlonglong id = repo.abrir(novo, &erro);
     if (id <= 0) {
-        // o banco também impede dois caixas abertos (terminal/operador), caso dois computadores abram juntos
+        // o banco impede dois caixas abertos do mesmo operador, caso dois computadores abram juntos
         if (erro.contains("unique", Qt::CaseInsensitive) || erro.contains("duplicate", Qt::CaseInsensitive))
-            return {false, "Já existe um caixa aberto para este terminal ou para este operador "
+            return {false, "Já existe um caixa aberto para este operador "
                            "(aberto agora em outro computador). Atualize e tente de novo."};
         return {false, "Não foi possível abrir o caixa: " + erro};
     }
@@ -86,18 +96,18 @@ Caixa_service::Resultado Caixa_service::abrirCaixa(qlonglong idOperador, const Q
 
 Caixa_service::Resultado Caixa_service::exigirCaixaAberto()
 {
-    const CaixaDTO caixa = caixaAbertoNoTerminal();
+    const CaixaDTO caixa = caixaAtual();
     if (!caixa.aberto())
-        return {false, "Nenhum caixa aberto neste terminal. Abra o caixa em Caixa > Abrir caixa antes de vender."};
+        return {false, "Você não tem caixa aberto. Abra o caixa em Caixa > Abrir caixa antes de vender."};
     return {true, QString(), caixa.id};
 }
 
 Caixa_service::Resultado Caixa_service::registrarMovimentacaoSimples(const QString &tipo, double valor,
                                                                      const QString &motivo)
 {
-    const CaixaDTO caixa = caixaAbertoNoTerminal();
+    const CaixaDTO caixa = caixaAtual();
     if (!caixa.aberto())
-        return {false, "Nenhum caixa aberto neste terminal."};
+        return {false, "Você não tem caixa aberto."};
     if (valor <= 0)
         return {false, "Informe um valor maior que zero."};
     if (motivo.trimmed().isEmpty())
@@ -132,9 +142,9 @@ Caixa_service::Resultado Caixa_service::registrarSuprimento(double valor, const 
 Caixa_service::Resultado Caixa_service::registrarRecebimento(qlonglong idVenda, qlonglong idEntradaVenda,
                                                              const QString &forma, double valor)
 {
-    const CaixaDTO caixa = caixaAbertoNoTerminal();
+    const CaixaDTO caixa = caixaAtual();
     if (!caixa.aberto())
-        return {false, "Nenhum caixa aberto neste terminal. Abra o caixa antes de receber."};
+        return {false, "Você não tem caixa aberto. Abra o caixa antes de receber."};
 
     MovimentacaoCaixaDTO mov;
     mov.idCaixa = caixa.id;
@@ -217,7 +227,7 @@ Caixa_service::Resultado Caixa_service::registrarCancelamento(const VendasDTO &v
         return {true, "Sem caixa para registrar."};
 
     const CaixaDTO caixa = repo.getPorId(venda.idCaixa);
-    const CaixaDTO atual = caixaAbertoNoTerminal();
+    const CaixaDTO atual = caixaAtual();
 
     MovimentacaoCaixaDTO mov;
     mov.idCaixa = venda.idCaixa;

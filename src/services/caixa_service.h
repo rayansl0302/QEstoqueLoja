@@ -27,7 +27,8 @@ public:
 
     explicit Caixa_service(QObject *parent = nullptr);
 
-    CaixaDTO caixaAbertoNoTerminal();
+    // caixa aberto de quem está logado (neste terminal)
+    CaixaDTO caixaAtual();
     CaixaDTO getCaixa(qlonglong id);
     double sugerirTrocoInicial();
 

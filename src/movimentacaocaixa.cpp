@@ -16,7 +16,7 @@ MovimentacaoCaixa::MovimentacaoCaixa(Tipo tipo, QWidget *parent)
     else
         ui->Rb_Sangria->setChecked(true);
 
-    const CaixaDTO caixa = caixaServ.caixaAbertoNoTerminal();
+    const CaixaDTO caixa = caixaServ.caixaAtual();
     if (caixa.aberto()) {
         ui->Lbl_Caixa->setText(QString("Caixa #%1 · %2 · terminal %3")
                                    .arg(caixa.id).arg(caixa.nomeOperador, caixa.terminal));

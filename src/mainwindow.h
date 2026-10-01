@@ -19,6 +19,7 @@
 #include <QKeyEvent>
 #include <QPointer>
 #include <QLabel>
+#include <QToolButton>
 #include "configuracao.h"
 #include "subclass/customlineedit.h"
 #include "nota/acbrmanager.h"
@@ -158,7 +159,7 @@ private:
     void setarIconesJanela();
     //QModelIndex selected_index;
 
-    const int ultimaVersaoSchema = 17;
+    const int ultimaVersaoSchema = 18;
 
     // operador comum só entra em histórico, cadastro de operadores, configurações e
     // relatórios gerenciais depois de informar o PIN do gerente
@@ -182,7 +183,8 @@ private:
     bool garantirCaixaAberto();
     QLabel *lblCaixaStatus = nullptr;
     bool saindoDoPrograma = false;
-    QLabel *lblSessao = nullptr;
+    QToolButton *btnOperador = nullptr;   // chip do operador logado (menu: trocar / sair)
+    QToolButton *btnSair = nullptr;       // "Sair da conta", sempre à vista
     QLabel *lblAvisoTimeout = nullptr;
     QAction *actionTrocarOperador = nullptr;
     QAction *actionSairSessao = nullptr;

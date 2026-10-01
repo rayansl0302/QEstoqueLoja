@@ -35,7 +35,7 @@ QSqlDatabase TestDbFactory::create()
     DatabaseConnection_service::setDatabase(db);
 
     // roda migration
-    SchemaMigration_service schema(nullptr, 17);
+    SchemaMigration_service schema(nullptr, 18);
     auto result = schema.update();
 
     if (!result.ok) {
@@ -135,7 +135,7 @@ QSqlDatabase TestDbFactory::createPostgres()
     DatabaseConnection_service::setDatabase(db);
 
 
-    SchemaMigration_service schema(nullptr, 17);
+    SchemaMigration_service schema(nullptr, 18);
 
     auto result = schema.update();
 
@@ -205,7 +205,7 @@ void TestDbFactory::removerBDAtual(){
 void TestDbFactory::garantirCaixaAberto()
 {
     Caixa_service cs;
-    if (cs.caixaAbertoNoTerminal().aberto())
+    if (cs.caixaAtual().aberto())
         return;
 
     // operador próprio dos testes (PIN 1234): o primeiro da lista poderia estar bloqueado por outro teste
