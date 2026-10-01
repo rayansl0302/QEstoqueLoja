@@ -62,6 +62,12 @@ MenuInicial::MenuInicial(QWidget *parent)
     lblSubtitulo->setStyleSheet(QStringLiteral("font-size: 11pt; color: #5B6B7F; background: transparent;"));
     conteudo->addWidget(lblTitulo);
     conteudo->addWidget(lblSubtitulo);
+    btnAlerta = new QPushButton(pagina);
+    btnAlerta->setCursor(Qt::PointingHandCursor);
+    btnAlerta->setVisible(false);
+    btnAlerta->setMinimumHeight(40);
+    connect(btnAlerta, &QPushButton::clicked, this, [this]() { if (acaoAlerta) acaoAlerta(); });
+    conteudo->addWidget(btnAlerta);
     conteudo->addSpacing(6);
     conteudo->addStretch(1);
 }
@@ -70,6 +76,19 @@ void MenuInicial::definirSaudacao(const QString &titulo, const QString &subtitul
 {
     lblTitulo->setText(titulo);
     lblSubtitulo->setText(subtitulo);
+}
+
+void MenuInicial::definirAlerta(const QString &texto, std::function<void()> acao, bool urgente)
+{
+    acaoAlerta = std::move(acao);
+    btnAlerta->setVisible(!texto.isEmpty());
+    btnAlerta->setText(texto);
+    const QString cor = urgente ? QStringLiteral("#B91C1C") : QStringLiteral("#B45309");
+    const QString fundo = urgente ? QStringLiteral("#FEF2F2") : QStringLiteral("#FFFBEB");
+    btnAlerta->setStyleSheet(QStringLiteral(
+        "QPushButton { background: %1; color: %2; border: 1px solid %2; border-radius: 10px; font-weight: 700;"
+        " padding: 6px 14px; text-align: left; }"
+        "QPushButton:hover { background: white; }").arg(fundo, cor));
 }
 
 void MenuInicial::adicionarGrupo(const QString &titulo)

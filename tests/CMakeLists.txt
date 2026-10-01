@@ -37,6 +37,7 @@ set(TEST_SOURCES
     services/test_fiscalemitter_service.cpp
     services/test_entradanfe_service.cpp
     services/test_caixa_service.cpp
+    services/test_empresa_contas.cpp
 )
 
 
@@ -56,6 +57,7 @@ add_executable(QEstoqueLojaTests
     services/test_eventofiscal_service.h services/test_eventofiscal_service.cpp
     services/test_entradanfe_service.h services/test_entradanfe_service.cpp
     services/test_caixa_service.h services/test_caixa_service.cpp
+    services/test_empresa_contas.h services/test_empresa_contas.cpp
 
 
 )

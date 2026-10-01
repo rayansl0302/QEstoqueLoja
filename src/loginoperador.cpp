@@ -1,4 +1,8 @@
 #include <QLineEdit>
+#include <QGridLayout>
+#include <QScrollArea>
+#include <QToolButton>
+#include "util/icones.h"
 #include "loginoperador.h"
 #include "ui_loginoperador.h"
 #include "operadores.h"
@@ -47,6 +51,14 @@ LoginOperador::LoginOperador(QWidget *parent)
 {
     ui->setupUi(this);
     connect(ui->Ledit_Pin, &QLineEdit::returnPressed, this, &LoginOperador::on_Btn_Entrar_clicked);
+
+    // o combo continua guardando os dados, mas quem escolhe é a lista de cartões (mais fácil de tocar)
+    ui->Lbl_Operador->hide();
+    ui->Cmb_Operador->hide();
+    ui->Ledit_Pin->setAlignment(Qt::AlignCenter);
+    ui->Ledit_Pin->setPlaceholderText(QStringLiteral("PIN (4 a 6 dígitos)"));
+    ui->Ledit_Pin->setStyleSheet(QStringLiteral("font-size: 16pt; letter-spacing: 6px;"));
+    ui->Lbl_Pin->setText(QStringLiteral("PIN:"));
     ui->Ledit_Pin->setFocus();
 }
 
@@ -77,9 +89,72 @@ void LoginOperador::carregarOperadores(const QList<OperadorDTO> &operadores, boo
     if (somenteGerente)
         ui->Cmb_Operador->setCurrentIndex(ui->Cmb_Operador->count() - 1);
 
-    ui->Cmb_Operador->setFocus();
+    // monta a lista de cartões a partir do combo
+    if (cartoes) {
+        ui->vl_login->removeWidget(cartoes);
+        cartoes->deleteLater();
+        cartoes = nullptr;
+    }
+    botoesOperador.clear();
+
+    auto *rolagem = new QScrollArea(this);
+    rolagem->setWidgetResizable(true);
+    rolagem->setFrameShape(QFrame::NoFrame);
+    rolagem->setMinimumHeight(190);
+    rolagem->setStyleSheet(QStringLiteral("QScrollArea { background: transparent; }"));
+    auto *interno = new QWidget;
+    interno->setStyleSheet(QStringLiteral("background: transparent;"));
+    auto *grade = new QGridLayout(interno);
+    grade->setContentsMargins(2, 2, 2, 2);
+    grade->setSpacing(10);
+    constexpr int kColunas = 3;
+
+    for (int i = 0; i < ui->Cmb_Operador->count(); ++i) {
+        const bool ehGerenteGeral = ui->Cmb_Operador->itemData(i).toLongLong() == kOperadorGerenteId;
+        const bool ehGerente = ehGerenteGeral || ui->Cmb_Operador->itemText(i).contains(QStringLiteral("(gerente)"));
+        QString nome = ui->Cmb_Operador->itemText(i);
+        nome.remove(QStringLiteral("  (gerente)"));
+
+        auto *botao = new QToolButton;
+        botao->setCheckable(true);
+        botao->setAutoExclusive(true);
+        botao->setCursor(Qt::PointingHandCursor);
+        botao->setFixedSize(168, 88);
+        botao->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+        botao->setIconSize(QSize(30, 30));
+        botao->setIcon(Icones::icone(ehGerenteGeral ? "shield-check" : "user", QColor("#2B84BF"), 30));
+        botao->setText(ehGerente && !ehGerenteGeral ? nome + QStringLiteral("\nGerente") : nome);
+        botao->setToolTip(ehGerenteGeral ? QStringLiteral("Usa o PIN geral do gerente") : nome);
+        botao->setStyleSheet(QStringLiteral(
+            "QToolButton { background: white; color: #1E3A5F; border: 1px solid #D5DEE9; border-radius: 12px;"
+            " font-weight: 700; padding: 6px; }"
+            "QToolButton:hover { background: #EAF3FB; border: 2px solid #2B84BF; }"
+            "QToolButton:checked { background: #D3E8F8; border: 2px solid #2B84BF; color: #0B2540; }"
+            "QToolButton:focus { border: 2px solid #2B84BF; }"));
+        connect(botao, &QToolButton::clicked, this, [this, i]() { selecionarCartao(i); });
+        botoesOperador.append(botao);
+        grade->addWidget(botao, i / kColunas, i % kColunas);
+    }
+    grade->setRowStretch(grade->rowCount(), 1);
+    grade->setColumnStretch(kColunas, 1);
+    rolagem->setWidget(interno);
+    cartoes = rolagem;
+    // logo abaixo do texto de instrução
+    ui->vl_login->insertWidget(2, rolagem);
+
+    selecionarCartao(somenteGerente ? ui->Cmb_Operador->count() - 1 : 0);
     ui->Ledit_Pin->clear();
     ui->Lbl_Aviso->clear();
+}
+
+void LoginOperador::selecionarCartao(int indice)
+{
+    if (indice < 0 || indice >= ui->Cmb_Operador->count())
+        return;
+    ui->Cmb_Operador->setCurrentIndex(indice);
+    if (indice < botoesOperador.size())
+        botoesOperador.at(indice)->setChecked(true);
+    ui->Ledit_Pin->setFocus();
 }
 
 void LoginOperador::setAviso(const QString &texto)

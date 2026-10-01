@@ -2,6 +2,8 @@
 #define LOGINOPERADOR_H
 
 #include <QDialog>
+#include <QList>
+#include <QToolButton>
 #include "dto/Operador_dto.h"
 #include "dto/Sessao_dto.h"
 #include "services/operador_service.h"
@@ -46,6 +48,9 @@ private:
     bool somenteGerente = false;
 
     void tentarEntrar();
+    void selecionarCartao(int indice);
+    QWidget *cartoes = nullptr;          // lista visual de operadores (no lugar do combo)
+    QList<QToolButton *> botoesOperador;
     void limparPin();
 };
 

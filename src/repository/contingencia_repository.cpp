@@ -1,4 +1,6 @@
 #include "contingencia_repository.h"
+#include "empresa_repository.h"
+#include "../infra/empresaativa.h"
 #include "../util/datautil.h"
 #include <QSqlQuery>
 #include <QSqlError>
@@ -16,7 +18,10 @@ QList<NotaFiscalDTO> ContingenciaRepository::buscarPendentes()
     QSqlQuery q(m_db);
     q.prepare("SELECT cstat, nnf, serie, modelo, tp_amb, xml_path, valor_total, "
               "id_venda, cnpjemit, chnfe, nprot, cuf, finalidade, saida, id_nf_ref, dhemi "
-              "FROM notas_fiscais WHERE cstat = 'CONTINGENCIA'");
+              "FROM notas_fiscais WHERE cstat = 'CONTINGENCIA' "
+              "AND (cnpjemit IS NULL OR cnpjemit = '' OR :cnpj = '' OR cnpjemit = :cnpj)");
+    // notas de outra empresa esperam: o envio usa o certificado da empresa em uso
+    q.bindValue(":cnpj", Empresa_repository().getPorId(EmpresaAtiva::id()).cnpj);
 
     if (q.exec()) {
         while (q.next()) {

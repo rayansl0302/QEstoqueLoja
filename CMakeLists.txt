@@ -114,6 +114,8 @@ set(QESTOQUE_SOURCES
     src/services/schemamigration_service.cpp
     src/services/escposprinter_service.cpp
     src/services/sessao_service.cpp
+    src/services/empresa_service.cpp
+    src/services/contaspagar_service.cpp
 
 
     src/repository/Produto_repository.cpp
@@ -129,6 +131,9 @@ set(QESTOQUE_SOURCES
     src/repository/produtovenda_repository.cpp
     src/repository/entradasvendas_repository.cpp
     src/repository/sessao_repository.cpp
+    src/repository/empresa_repository.cpp
+    src/repository/relatorios_repository.cpp
+    src/repository/contaspagar_repository.cpp
 
     src/util/datautil.cpp
     src/util/ibptutil.cpp
@@ -316,8 +321,12 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/dto/Sessao_dto.h
         src/repository/operador_repository.h src/repository/operador_repository.cpp
         src/repository/sessao_repository.h src/repository/sessao_repository.cpp
+        src/repository/empresa_repository.h src/repository/empresa_repository.cpp
+        src/repository/contaspagar_repository.h src/repository/contaspagar_repository.cpp
         src/services/operador_service.h src/services/operador_service.cpp
         src/services/sessao_service.h src/services/sessao_service.cpp
+        src/services/empresa_service.h src/services/empresa_service.cpp
+        src/services/contaspagar_service.h src/services/contaspagar_service.cpp
         src/loginoperador.h src/loginoperador.cpp src/loginoperador.ui
         src/dto/Caixa_dto.h
         src/repository/caixa_repository.h src/repository/caixa_repository.cpp
@@ -327,6 +336,9 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/operadores.h src/operadores.cpp src/operadores.ui
         src/logacessodialog.h src/logacessodialog.cpp
         src/menuinicial.h src/menuinicial.cpp
+        src/empresadialog.h src/empresadialog.cpp
+        src/contaspagarjanela.h src/contaspagarjanela.cpp
+        src/contapagardialogs.h src/contapagardialogs.cpp
         src/movimentacaocaixa.h src/movimentacaocaixa.cpp src/movimentacaocaixa.ui
         src/fechamentocaixa.h src/fechamentocaixa.cpp src/fechamentocaixa.ui
         src/historicocaixas.h src/historicocaixas.cpp src/historicocaixas.ui

@@ -1,10 +1,21 @@
 #include "config_repository.h"
 #include "../infra/apppath_service.h"
+#include "../infra/empresaativa.h"
 #include <QSettings>
 #include <QSql>
 #include <quuid.h>
 #include <QSqlDatabase>
 #include <QSqlError>
+
+namespace {
+// Dados da empresa e fiscais (certificado, CSC, numeração de NF) valem por empresa. A empresa 1 usa as
+// chaves de sempre (nada a migrar); as demais ficam em "empresa_<id>/...".
+QString ke(const QString &chave)
+{
+    const qlonglong id = EmpresaAtiva::id();
+    return id <= 1 ? chave : QStringLiteral("empresa_%1/").arg(id) + chave;
+}
+}
 
 Config_repository::Config_repository(QObject *parent)
     : QObject{parent}
@@ -15,42 +26,42 @@ ConfigDTO Config_repository::loadAll()
     ConfigDTO dto;
     QSettings s(AppPath_service::configPath(), QSettings::IniFormat);
 
-    dto.nomeEmpresa             = s.value("empresa/nome_empresa").toString();
-    dto.nomeFantasiaEmpresa     = s.value("empresa/nfant_empresa").toString();
-    dto.enderecoEmpresa         = s.value("empresa/endereco_empresa").toString();
-    dto.numeroEmpresa           = s.value("empresa/numero_empresa").toString();
-    dto.bairroEmpresa           = s.value("empresa/bairro_empresa").toString();
-    dto.cepEmpresa              = s.value("empresa/cep_empresa").toString();
-    dto.cidadeEmpresa           = s.value("empresa/cidade_empresa").toString();
-    dto.estadoEmpresa           = s.value("empresa/estado_empresa").toString();
-    dto.emailEmpresa            = s.value("empresa/email_empresa").toString();
-    dto.telefoneEmpresa         = s.value("empresa/telefone_empresa").toString();
-    dto.cnpjEmpresa             = s.value("empresa/cnpj_empresa").toString();
-    dto.logoPathEmpresa         = s.value("empresa/caminho_logo_empresa").toString();
+    dto.nomeEmpresa             = s.value(ke("empresa/nome_empresa")).toString();
+    dto.nomeFantasiaEmpresa     = s.value(ke("empresa/nfant_empresa")).toString();
+    dto.enderecoEmpresa         = s.value(ke("empresa/endereco_empresa")).toString();
+    dto.numeroEmpresa           = s.value(ke("empresa/numero_empresa")).toString();
+    dto.bairroEmpresa           = s.value(ke("empresa/bairro_empresa")).toString();
+    dto.cepEmpresa              = s.value(ke("empresa/cep_empresa")).toString();
+    dto.cidadeEmpresa           = s.value(ke("empresa/cidade_empresa")).toString();
+    dto.estadoEmpresa           = s.value(ke("empresa/estado_empresa")).toString();
+    dto.emailEmpresa            = s.value(ke("empresa/email_empresa")).toString();
+    dto.telefoneEmpresa         = s.value(ke("empresa/telefone_empresa")).toString();
+    dto.cnpjEmpresa             = s.value(ke("empresa/cnpj_empresa")).toString();
+    dto.logoPathEmpresa         = s.value(ke("empresa/caminho_logo_empresa")).toString();
 
-    dto.regimeTribFiscal        = s.value("fiscal/regime_trib").toInt();
-    dto.tpAmbFiscal             = s.value("fiscal/tp_amb").toInt();
-    dto.idCscFiscal             = s.value("fiscal/id_csc").toString();
-    dto.cscFiscal               = s.value("fiscal/csc").toString();
-    dto.schemaPathFiscal        = s.value("fiscal/caminho_schema").toString();
-    dto.certAcPathFiscal        = s.value("fiscal/caminho_certac").toString();
-    dto.certificadoPathFiscal   = s.value("fiscal/caminho_certificado").toString();
-    dto.senhaCertificadoFiscal  = s.value("fiscal/senha_certificado").toString();
-    dto.cUfFiscal               = s.value("fiscal/cuf").toString();
-    dto.cMunFiscal              = s.value("fiscal/cmun").toString();
-    dto.iEstadFiscal            = s.value("fiscal/iest").toString();
-    dto.cnpjRTFiscal            = s.value("fiscal/cnpj_rt").toString();
-    dto.nomeRTFiscal            = s.value("fiscal/nome_rt").toString();
-    dto.emailRTFiscal           = s.value("fiscal/email_rt").toString();
-    dto.foneRTFiscal            = s.value("fiscal/fone_rt").toString();
-    dto.idCSRTFiscal            = s.value("fiscal/id_csrt").toString();
-    dto.hashCSRTFiscal          = s.value("fiscal/hash_csrt").toString();
-    dto.emitNfFiscal            = s.value("fiscal/emit_nf").toString() == "1";
-    dto.usarIbsFiscal           = s.value("fiscal/usar_ibs").toString() == "1";
-    dto.nnfHomologFiscal        = s.value("fiscal/nnf_homolog").toInt();
-    dto.nnfProdFiscal           = s.value("fiscal/nnf_prod").toInt();
-    dto.nnfHomologNfeFiscal     = s.value("fiscal/nnf_homolog_nfe").toInt();
-    dto.nnfProdNfeFiscal        = s.value("fiscal/nnf_prod_nfe").toInt();
+    dto.regimeTribFiscal        = s.value(ke("fiscal/regime_trib")).toInt();
+    dto.tpAmbFiscal             = s.value(ke("fiscal/tp_amb")).toInt();
+    dto.idCscFiscal             = s.value(ke("fiscal/id_csc")).toString();
+    dto.cscFiscal               = s.value(ke("fiscal/csc")).toString();
+    dto.schemaPathFiscal        = s.value(ke("fiscal/caminho_schema")).toString();
+    dto.certAcPathFiscal        = s.value(ke("fiscal/caminho_certac")).toString();
+    dto.certificadoPathFiscal   = s.value(ke("fiscal/caminho_certificado")).toString();
+    dto.senhaCertificadoFiscal  = s.value(ke("fiscal/senha_certificado")).toString();
+    dto.cUfFiscal               = s.value(ke("fiscal/cuf")).toString();
+    dto.cMunFiscal              = s.value(ke("fiscal/cmun")).toString();
+    dto.iEstadFiscal            = s.value(ke("fiscal/iest")).toString();
+    dto.cnpjRTFiscal            = s.value(ke("fiscal/cnpj_rt")).toString();
+    dto.nomeRTFiscal            = s.value(ke("fiscal/nome_rt")).toString();
+    dto.emailRTFiscal           = s.value(ke("fiscal/email_rt")).toString();
+    dto.foneRTFiscal            = s.value(ke("fiscal/fone_rt")).toString();
+    dto.idCSRTFiscal            = s.value(ke("fiscal/id_csrt")).toString();
+    dto.hashCSRTFiscal          = s.value(ke("fiscal/hash_csrt")).toString();
+    dto.emitNfFiscal            = s.value(ke("fiscal/emit_nf")).toString() == "1";
+    dto.usarIbsFiscal           = s.value(ke("fiscal/usar_ibs")).toString() == "1";
+    dto.nnfHomologFiscal        = s.value(ke("fiscal/nnf_homolog")).toInt();
+    dto.nnfProdFiscal           = s.value(ke("fiscal/nnf_prod")).toInt();
+    dto.nnfHomologNfeFiscal     = s.value(ke("fiscal/nnf_homolog_nfe")).toInt();
+    dto.nnfProdNfeFiscal        = s.value(ke("fiscal/nnf_prod_nfe")).toInt();
 
     dto.ncmPadraoProduto        = s.value("produto/ncm_padrao").toString();
     dto.csosnPadraoProduto      = s.value("produto/csosn_padrao").toString();
@@ -99,42 +110,42 @@ bool Config_repository::saveAll(const ConfigDTO &dto)
 {
     QSettings s(AppPath_service::configPath(), QSettings::IniFormat);
 
-    s.setValue("empresa/nome_empresa",          dto.nomeEmpresa);
-    s.setValue("empresa/nfant_empresa",         dto.nomeFantasiaEmpresa);
-    s.setValue("empresa/endereco_empresa",      dto.enderecoEmpresa);
-    s.setValue("empresa/numero_empresa",        dto.numeroEmpresa);
-    s.setValue("empresa/bairro_empresa",        dto.bairroEmpresa);
-    s.setValue("empresa/cep_empresa",           dto.cepEmpresa);
-    s.setValue("empresa/cidade_empresa",        dto.cidadeEmpresa);
-    s.setValue("empresa/estado_empresa",        dto.estadoEmpresa);
-    s.setValue("empresa/email_empresa",         dto.emailEmpresa);
-    s.setValue("empresa/telefone_empresa",      dto.telefoneEmpresa);
-    s.setValue("empresa/cnpj_empresa",          dto.cnpjEmpresa);
-    s.setValue("empresa/caminho_logo_empresa",  dto.logoPathEmpresa);
+    s.setValue(ke("empresa/nome_empresa"),          dto.nomeEmpresa);
+    s.setValue(ke("empresa/nfant_empresa"),         dto.nomeFantasiaEmpresa);
+    s.setValue(ke("empresa/endereco_empresa"),      dto.enderecoEmpresa);
+    s.setValue(ke("empresa/numero_empresa"),        dto.numeroEmpresa);
+    s.setValue(ke("empresa/bairro_empresa"),        dto.bairroEmpresa);
+    s.setValue(ke("empresa/cep_empresa"),           dto.cepEmpresa);
+    s.setValue(ke("empresa/cidade_empresa"),        dto.cidadeEmpresa);
+    s.setValue(ke("empresa/estado_empresa"),        dto.estadoEmpresa);
+    s.setValue(ke("empresa/email_empresa"),         dto.emailEmpresa);
+    s.setValue(ke("empresa/telefone_empresa"),      dto.telefoneEmpresa);
+    s.setValue(ke("empresa/cnpj_empresa"),          dto.cnpjEmpresa);
+    s.setValue(ke("empresa/caminho_logo_empresa"),  dto.logoPathEmpresa);
 
-    s.setValue("fiscal/regime_trib",            dto.regimeTribFiscal);
-    s.setValue("fiscal/tp_amb",                 dto.tpAmbFiscal);
-    s.setValue("fiscal/id_csc",                 dto.idCscFiscal);
-    s.setValue("fiscal/csc",                    dto.cscFiscal);
-    s.setValue("fiscal/caminho_schema",         dto.schemaPathFiscal);
-    s.setValue("fiscal/caminho_certac",         dto.certAcPathFiscal);
-    s.setValue("fiscal/caminho_certificado",    dto.certificadoPathFiscal);
-    s.setValue("fiscal/senha_certificado",      dto.senhaCertificadoFiscal);
-    s.setValue("fiscal/cuf",                    dto.cUfFiscal);
-    s.setValue("fiscal/cmun",                   dto.cMunFiscal);
-    s.setValue("fiscal/iest",                   dto.iEstadFiscal);
-    s.setValue("fiscal/cnpj_rt",                dto.cnpjRTFiscal);
-    s.setValue("fiscal/nome_rt",                dto.nomeRTFiscal);
-    s.setValue("fiscal/email_rt",               dto.emailRTFiscal);
-    s.setValue("fiscal/fone_rt",                dto.foneRTFiscal);
-    s.setValue("fiscal/id_csrt",                dto.idCSRTFiscal);
-    s.setValue("fiscal/hash_csrt",              dto.hashCSRTFiscal);
-    s.setValue("fiscal/emit_nf",                dto.emitNfFiscal  ? "1" : "0");
-    s.setValue("fiscal/usar_ibs",               dto.usarIbsFiscal ? "1" : "0");
-    s.setValue("fiscal/nnf_homolog",            dto.nnfHomologFiscal);
-    s.setValue("fiscal/nnf_prod",               dto.nnfProdFiscal);
-    s.setValue("fiscal/nnf_homolog_nfe",        dto.nnfHomologNfeFiscal);
-    s.setValue("fiscal/nnf_prod_nfe",           dto.nnfProdNfeFiscal);
+    s.setValue(ke("fiscal/regime_trib"),            dto.regimeTribFiscal);
+    s.setValue(ke("fiscal/tp_amb"),                 dto.tpAmbFiscal);
+    s.setValue(ke("fiscal/id_csc"),                 dto.idCscFiscal);
+    s.setValue(ke("fiscal/csc"),                    dto.cscFiscal);
+    s.setValue(ke("fiscal/caminho_schema"),         dto.schemaPathFiscal);
+    s.setValue(ke("fiscal/caminho_certac"),         dto.certAcPathFiscal);
+    s.setValue(ke("fiscal/caminho_certificado"),    dto.certificadoPathFiscal);
+    s.setValue(ke("fiscal/senha_certificado"),      dto.senhaCertificadoFiscal);
+    s.setValue(ke("fiscal/cuf"),                    dto.cUfFiscal);
+    s.setValue(ke("fiscal/cmun"),                   dto.cMunFiscal);
+    s.setValue(ke("fiscal/iest"),                   dto.iEstadFiscal);
+    s.setValue(ke("fiscal/cnpj_rt"),                dto.cnpjRTFiscal);
+    s.setValue(ke("fiscal/nome_rt"),                dto.nomeRTFiscal);
+    s.setValue(ke("fiscal/email_rt"),               dto.emailRTFiscal);
+    s.setValue(ke("fiscal/fone_rt"),                dto.foneRTFiscal);
+    s.setValue(ke("fiscal/id_csrt"),                dto.idCSRTFiscal);
+    s.setValue(ke("fiscal/hash_csrt"),              dto.hashCSRTFiscal);
+    s.setValue(ke("fiscal/emit_nf"),                dto.emitNfFiscal  ? "1" : "0");
+    s.setValue(ke("fiscal/usar_ibs"),               dto.usarIbsFiscal ? "1" : "0");
+    s.setValue(ke("fiscal/nnf_homolog"),            dto.nnfHomologFiscal);
+    s.setValue(ke("fiscal/nnf_prod"),               dto.nnfProdFiscal);
+    s.setValue(ke("fiscal/nnf_homolog_nfe"),        dto.nnfHomologNfeFiscal);
+    s.setValue(ke("fiscal/nnf_prod_nfe"),           dto.nnfProdNfeFiscal);
 
     s.setValue("produto/ncm_padrao",            dto.ncmPadraoProduto);
     s.setValue("produto/csosn_padrao",          dto.csosnPadraoProduto);

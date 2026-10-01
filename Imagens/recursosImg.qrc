@@ -25,6 +25,17 @@
         <file alias="user.svg">icones/user.svg</file>
         <file alias="users.svg">icones/users.svg</file>
         <file alias="wallet.svg">icones/wallet.svg</file>
+        <file alias="arrow-left-right.svg">icones/arrow-left-right.svg</file>
+        <file alias="ban.svg">icones/ban.svg</file>
+        <file alias="banknote.svg">icones/banknote.svg</file>
+        <file alias="building-2.svg">icones/building-2.svg</file>
+        <file alias="check.svg">icones/check.svg</file>
+        <file alias="circle-check.svg">icones/circle-check.svg</file>
+        <file alias="pencil.svg">icones/pencil.svg</file>
+        <file alias="plus.svg">icones/plus.svg</file>
+        <file alias="triangle-alert.svg">icones/triangle-alert.svg</file>
+        <file alias="undo-2.svg">icones/undo-2.svg</file>
+        <file alias="x.svg">icones/x.svg</file>
     </qresource>
     <qresource prefix="/">
         <file>QEstoqueLOja/mkaoyvbl.png</file>

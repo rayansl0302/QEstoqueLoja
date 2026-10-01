@@ -56,6 +56,8 @@ public:
     void setModoDesenvolvimento(bool ativo);
     // Chamado depois de abrir a sessão: repõe o rodapé e arma o timeout de inatividade.
     void aplicarSessao();
+    // Se houver mais de uma empresa, pergunta com qual vai trabalhar (uma vez por abertura do programa).
+    void perguntarEmpresaSeNecessario();
     QLocale portugues;
     QIcon iconAlterarProduto, iconAddProduto, iconBtnVenda, iconDelete, iconPesquisa, iconBtnRelatorios,
         iconImpressora, iconClientes;
@@ -133,6 +135,13 @@ private slots:
     bool naListaDeProdutos() const;
     void atualizarSaudacao();
     void atualizarLogoCabecalho();
+    // multi-empresa e contas a pagar
+    void escolherEmpresaClicked();
+    void abrirContasPagar() { contasPagarClicked(); }
+    void contasPagarClicked(const QString &statusInicial = QString());
+    void atualizarIndicadorEmpresa();
+    void atualizarAlertaContas();
+    void empresaMudou();
     void operadoresClicked();
     void trocarOperadorClicked();
     void sairSessaoClicked();
@@ -168,7 +177,7 @@ private:
     void setarIconesJanela();
     //QModelIndex selected_index;
 
-    const int ultimaVersaoSchema = 18;
+    const int ultimaVersaoSchema = 20;
 
     // operador comum só entra em histórico, cadastro de operadores, configurações e
     // relatórios gerenciais depois de informar o PIN do gerente
@@ -196,6 +205,8 @@ private:
     QToolButton *btnSair = nullptr;       // "Sair da conta", sempre à vista
     QLabel *lblAvisoTimeout = nullptr;
     MenuInicial *menuInicial = nullptr;
+    QToolButton *btnEmpresa = nullptr;     // empresa (CNPJ) em uso, no rodapé
+    bool empresaPerguntada = false;
     QAction *actionTrocarOperador = nullptr;
     QAction *actionSairSessao = nullptr;
     bool modoDesenvolvimento = false;

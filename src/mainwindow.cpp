@@ -62,6 +62,10 @@
 #include "logacessodialog.h"
 #include "menuinicial.h"
 #include "util/icones.h"
+#include "empresadialog.h"
+#include "contaspagarjanela.h"
+#include "services/empresa_service.h"
+#include "services/contaspagar_service.h"
 #include <QStackedWidget>
 #include <QStandardPaths>
 #include <QFileInfo>
@@ -91,6 +95,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     iniciarMigration();
 
+    // a empresa em uso (CNPJ) é lida do banco já migrado; dados da empresa e fiscais são por empresa
+    Empresa_service::instancia()->carregarEstadoInicial();
+    configDTO = confServ->carregarTudo();
 
     db = DatabaseConnection_service::db();
 
@@ -181,6 +188,9 @@ MainWindow::MainWindow(QWidget *parent)
     atualizarIndicadorCaixa();
     montarMenuInicial();
     atualizarLogoCabecalho();
+    atualizarIndicadorEmpresa();
+    atualizarAlertaContas();
+    connect(Empresa_service::instancia(), &Empresa_service::empresaMudou, this, &MainWindow::empresaMudou);
 
     Sessao_service *sessao = Sessao_service::instancia();
     connect(sessao, &Sessao_service::sessaoExpirada, this, &MainWindow::sessaoExpirada);
@@ -489,6 +499,7 @@ bool MainWindow::naListaDeProdutos() const
 void MainWindow::irParaInicio()
 {
     ui->pilhaPrincipal->setCurrentWidget(ui->paginaMenu);
+    atualizarAlertaContas();
 }
 
 void MainWindow::irParaProdutos()
@@ -565,6 +576,12 @@ void MainWindow::montarMenuInicial()
     m->adicionarBotao("circle-arrow-up", "Suprimento", "Colocar dinheiro no caixa", [this]() { suprimentoClicked(); });
     m->adicionarBotao("history", "Histórico de caixas", "Caixas abertos e fechados", [this]() { historicoCaixaClicked(); });
 
+    m->adicionarGrupo("Financeiro");
+    m->adicionarBotao("banknote", "Contas a pagar", "Contas, vencimentos e baixas", [this]() { contasPagarClicked(); });
+    m->adicionarBotao("plus", "Nova conta a pagar", "Lançar uma conta ou compra parcelada",
+                      [this]() { contasPagarClicked(QStringLiteral("NOVA")); });
+    m->adicionarBotao("building-2", "Trocar empresa", "Escolher o CNPJ das vendas e notas", [this]() { escolherEmpresaClicked(); });
+
     m->adicionarGrupo("Gestão e fiscal");
     m->adicionarBotao("chart-column", "Relatórios", "Relatórios gerenciais", [this]() { ui->Btn_Relatorios->click(); });
     m->adicionarBotao("user-cog", "Operadores", "Cadastro de operadores de caixa", [this]() { operadoresClicked(); });
@@ -594,6 +611,85 @@ void MainWindow::montarMenuInicial()
     irParaInicio();
 }
 
+namespace { QString estiloChip(const QString &cor); }
+
+void MainWindow::atualizarIndicadorEmpresa()
+{
+    if (!btnEmpresa)
+        return;
+    const EmpresaDTO e = Empresa_service::instancia()->ativa();
+    const QString nome = e.valida() ? e.apelido : QStringLiteral("Empresa");
+    btnEmpresa->setIcon(Icones::icone("building-2", QColor("#0F766E"), 20));
+    btnEmpresa->setText(QStringLiteral(" %1").arg(nome));
+    btnEmpresa->setStyleSheet(estiloChip("rgb(15, 118, 110)"));
+    btnEmpresa->setToolTip(QStringLiteral("Empresa em uso: %1\nCNPJ %2\nClique para trocar — as vendas e notas "
+                                          "vão para o CNPJ escolhido.")
+                               .arg(nome, e.cnpj.isEmpty() ? QStringLiteral("não informado") : e.cnpjFormatado()));
+}
+
+void MainWindow::escolherEmpresaClicked()
+{
+    EmpresaDialog dlg([this](const QString &acao) { return exigirGerente(acao); }, QString(), this);
+    dlg.exec();
+}
+
+void MainWindow::perguntarEmpresaSeNecessario()
+{
+    if (empresaPerguntada)
+        return;
+    empresaPerguntada = true;
+    if (Empresa_service::instancia()->listar(true).size() < 2)
+        return;
+    EmpresaDialog dlg([this](const QString &acao) { return exigirGerente(acao); },
+                      QStringLiteral("Em qual empresa vai trabalhar hoje?"), this);
+    dlg.exec();
+}
+
+void MainWindow::empresaMudou()
+{
+    // cada empresa tem seus dados, certificado e numeração: recarrega tudo que depende da configuração
+    configDTO = confServ->carregarTudo();
+    atualizarConfigAcbr();
+    atualizarLogoCabecalho();
+    atualizarSaudacao();
+    atualizarIndicadorEmpresa();
+    atualizarAlertaContas();
+}
+
+void MainWindow::contasPagarClicked(const QString &statusInicial)
+{
+    const bool nova = statusInicial == QLatin1String("NOVA");
+    ContasPagarJanela janela([this](const QString &acao) { return exigirGerente(acao); },
+                             nova ? QString() : statusInicial, this);
+    if (nova)
+        QTimer::singleShot(0, &janela, [&janela]() { janela.novaConta(); });
+    janela.exec();
+    atualizarAlertaContas();
+}
+
+void MainWindow::atualizarAlertaContas()
+{
+    if (!menuInicial)
+        return;
+    ContasPagar_service servico;
+    const ResumoContasPagarDTO r = servico.resumo(Empresa_service::instancia()->idAtiva());
+    QLocale ptBR(QLocale::Portuguese, QLocale::Brazil);
+    QStringList partes;
+    if (r.qtdVencidas > 0)
+        partes << QStringLiteral("%1 conta(s) vencida(s) (%2)").arg(r.qtdVencidas).arg(ptBR.toCurrencyString(r.valorVencidas, "R$ "));
+    if (r.qtdHoje > 0)
+        partes << QStringLiteral("%1 vence(m) hoje (%2)").arg(r.qtdHoje).arg(ptBR.toCurrencyString(r.valorHoje, "R$ "));
+    if (partes.isEmpty()) {
+        menuInicial->definirAlerta(QString());
+        return;
+    }
+    menuInicial->definirAlerta(QStringLiteral("Contas a pagar: %1 — clique para ver").arg(partes.join("  ·  ")),
+                               [this, vencidas = r.qtdVencidas]() {
+                                   contasPagarClicked(vencidas > 0 ? QStringLiteral("VENCIDA") : QString(kContaAberta));
+                               },
+                               r.qtdVencidas > 0);
+}
+
 void MainWindow::montarMenuCaixa()
 {
     QMenu *menuCaixa = new QMenu("Caixa", this);
@@ -609,6 +705,13 @@ void MainWindow::montarMenuCaixa()
     menuCaixa->addAction("PIN do gerente...", this, [this]() { Operadores::alterarPinGerente(this); });
     ui->menuBar->insertMenu(ui->menuAjuda->menuAction(), menuCaixa);
 
+    QMenu *menuFinanceiro = new QMenu("Financeiro", this);
+    menuFinanceiro->addAction("Contas a pagar...", this, [this]() { contasPagarClicked(); });
+    menuFinanceiro->addAction("Nova conta a pagar...", this, [this]() { contasPagarClicked(QStringLiteral("NOVA")); });
+    menuFinanceiro->addSeparator();
+    menuFinanceiro->addAction("Trocar empresa...", this, &MainWindow::escolherEmpresaClicked);
+    ui->menuBar->insertMenu(ui->menuAjuda->menuAction(), menuFinanceiro);
+
     // menu da sessão: troca de operador e encerramento do turno
     QMenu *menuSessao = new QMenu("Sessão", this);
     actionTrocarOperador = menuSessao->addAction("Trocar operador...", this, &MainWindow::trocarOperadorClicked);
@@ -622,6 +725,15 @@ void MainWindow::montarMenuCaixa()
     QFont fonteRodape = font();
     fonteRodape.setPointSize(qMax(font().pointSize(), 9) + 2);
     fonteRodape.setBold(true);
+
+    btnEmpresa = new QToolButton(this);
+    btnEmpresa->setFont(fonteRodape);
+    btnEmpresa->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    btnEmpresa->setIconSize(QSize(20, 20));
+    btnEmpresa->setCursor(Qt::PointingHandCursor);
+    btnEmpresa->setToolTip("Empresa (CNPJ) das vendas e notas — clique para trocar");
+    connect(btnEmpresa, &QToolButton::clicked, this, &MainWindow::escolherEmpresaClicked);
+    ui->statusbar->addPermanentWidget(btnEmpresa);
 
     btnOperador = new QToolButton(this);
     btnOperador->setFont(fonteRodape);

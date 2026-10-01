@@ -1,10 +1,16 @@
 #include "relatorios_repository.h"
 #include "../infra/databaseconnection_service.h"
+#include "../infra/empresaativa.h"
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QDebug>
 #include <QSqlRecord>
 #include <QDateTime>
+
+namespace {
+// Relatórios valem para a empresa (CNPJ) em uso. O id é número, então vai direto no texto do SQL.
+QString empresaAtivaSql() { return QString::number(EmpresaAtiva::id()); }
+}
 
 Relatorios_repository::Relatorios_repository(QObject *parent)
     : QObject{parent}
@@ -102,9 +108,10 @@ QMap<QString, int> Relatorios_repository::buscarQuantVendasPeriodo(
                COUNT(*) AS total
         FROM vendas2
         WHERE %2 BETWEEN :inicio AND :fim
+          AND id_empresa = @EMP@
         GROUP BY %1
         ORDER BY periodo
-    )").arg(fmt, filtroData));
+    )").arg(fmt, filtroData).replace("@EMP@", empresaAtivaSql()));
 
 
     query.bindValue(":inicio", inicio.toString(Qt::ISODate));
@@ -164,6 +171,7 @@ QMap<QString, QPair<double,double>> Relatorios_repository::buscarValorVendasPeri
             FROM vendas2
             WHERE %2 BETWEEN :inicio1 AND :fim1
               AND forma_pagamento <> 'Prazo'
+              AND id_empresa = @EMP@
             GROUP BY %1
         ) AS v
         LEFT JOIN (
@@ -171,11 +179,12 @@ QMap<QString, QPair<double,double>> Relatorios_repository::buscarValorVendasPeri
                    SUM(valor_final) AS total_entradas
             FROM entradas_vendas
             WHERE %2 BETWEEN :inicio2 AND :fim2
+              AND id_venda IN (SELECT id FROM vendas2 WHERE id_empresa = @EMP@)
             GROUP BY %1
         ) AS e
         ON v.periodo = e.periodo
         ORDER BY v.periodo
-    )").arg(fmt, filtroData));
+    )").arg(fmt, filtroData).replace("@EMP@", empresaAtivaSql()));
 
 
     query.bindValue(":inicio1", inicio.toString(Qt::ISODate));
@@ -241,10 +250,11 @@ QMap<QString, int> Relatorios_repository::buscarTopProdutosVendidosPeriodo(
         JOIN vendas2 v
              ON pv.id_venda = v.id
         WHERE %1 BETWEEN :inicio AND :fim
+          AND v.id_empresa = @EMP@
         GROUP BY p.descricao
         ORDER BY total DESC
         LIMIT 10
-    )").arg(filtroData));
+    )").arg(filtroData).replace("@EMP@", empresaAtivaSql()));
 
     query.bindValue(":inicio", inicio.toString(Qt::ISODate));
     query.bindValue(":fim",    fim.toString(Qt::ISODate));
@@ -294,9 +304,10 @@ QMap<QString, QMap<QString,int>> Relatorios_repository::buscarFormasPagamentoPer
                COUNT(*) AS total
         FROM vendas2
         WHERE %2 BETWEEN :inicio AND :fim
+          AND id_empresa = @EMP@
         GROUP BY forma_pagamento, %1
         ORDER BY periodo
-    )").arg(fmt, filtroData));
+    )").arg(fmt, filtroData).replace("@EMP@", empresaAtivaSql()));
 
     query.bindValue(":inicio", inicio.toString(Qt::ISODate));
     query.bindValue(":fim",    fim.toString(Qt::ISODate));
@@ -355,10 +366,11 @@ QMap<QString, float> Relatorios_repository::buscarValoresNfPeriodo(
           AND (cstat = '100' OR cstat = '150')
           AND tp_amb = :tpamb
           AND finalidade IN ('NORMAL', 'DEVOLUCAO')
+          AND id_venda IN (SELECT id FROM vendas2 WHERE id_empresa = @EMP@)
         GROUP BY %1
         ORDER BY periodo
         )"
-                      ).arg(fmt, filtroData));
+                      ).arg(fmt, filtroData).replace("@EMP@", empresaAtivaSql()));
 
 
     query.bindValue(":inicio", inicio.toString(Qt::ISODate));
@@ -420,6 +432,7 @@ QMap<QString, float> Relatorios_repository::produtosMaisLucrativosPeriodo(
         JOIN vendas2 v
              ON pv.id_venda = v.id
         WHERE %1 BETWEEN :inicio AND :fim
+          AND v.id_empresa = @EMP@
         GROUP BY p.descricao
         HAVING SUM(
                    pv.quantidade *
@@ -434,7 +447,7 @@ QMap<QString, float> Relatorios_repository::produtosMaisLucrativosPeriodo(
                ) > 0
         ORDER BY lucro_total DESC
         LIMIT 10
-    )").arg(filtroData));
+    )").arg(filtroData).replace("@EMP@", empresaAtivaSql()));
 
     query.bindValue(":inicio", inicio.toString(Qt::ISODate));
     query.bindValue(":fim",    fim.toString(Qt::ISODate));
@@ -520,6 +533,7 @@ QMap<QString, double> Relatorios_repository::buscarLucroPeriodo(
             JOIN sale_stats ss ON ss.id_venda = v.id
             WHERE %3 BETWEEN :inicio1 AND :fim1
               AND v.forma_pagamento <> 'Prazo'
+              AND v.id_empresa = @EMP@
             GROUP BY %1
         ),
         credit AS (
@@ -537,6 +551,7 @@ QMap<QString, double> Relatorios_repository::buscarLucroPeriodo(
             JOIN sale_stats ss ON ss.id_venda = ev.id_venda
             JOIN vendas2 v ON v.id = ev.id_venda
             WHERE %4 BETWEEN :inicio2 AND :fim2
+              AND v.id_empresa = @EMP@
             GROUP BY %2
         )
         SELECT periodo, SUM(lucro_caixa) AS total_lucro
@@ -547,7 +562,7 @@ QMap<QString, double> Relatorios_repository::buscarLucroPeriodo(
         ) combined
         GROUP BY periodo
         ORDER BY periodo
-    )").arg(fmtV, fmtEV, filtroV, filtroEV));
+    )").arg(fmtV, fmtEV, filtroV, filtroEV).replace("@EMP@", empresaAtivaSql()));
 
     query.bindValue(":inicio1", inicio.toString(Qt::ISODate));
     query.bindValue(":fim1",    fim.toString(Qt::ISODate));
@@ -737,29 +752,33 @@ QList<QStringList> Relatorios_repository::buscarClientesInadimplentes()
     // data_referencia = data do ultimo pagamento (entradas_vendas), ou,
     // se o cliente nunca pagou nada, a data da compra a prazo mais antiga.
     // Ordenar por essa data ASC coloca quem esta ha mais tempo sem pagar primeiro.
-    query.prepare(R"(
+    query.prepare(QString(R"(
         WITH devido AS (
             SELECT id_cliente, SUM(valor_final) AS total_devido
             FROM vendas2
             WHERE forma_pagamento = 'Prazo'
+              AND id_empresa = @EMP@
             GROUP BY id_cliente
         ),
         pago AS (
             SELECT v.id_cliente, SUM(ev.valor_final) AS total_pago
             FROM entradas_vendas ev
             JOIN vendas2 v ON v.id = ev.id_venda
+            WHERE v.id_empresa = @EMP@
             GROUP BY v.id_cliente
         ),
         ultimo_pagamento AS (
             SELECT v.id_cliente, MAX(ev.data_hora) AS data_pagamento
             FROM entradas_vendas ev
             JOIN vendas2 v ON v.id = ev.id_venda
+            WHERE v.id_empresa = @EMP@
             GROUP BY v.id_cliente
         ),
         primeira_compra AS (
             SELECT id_cliente, MIN(data_hora) AS data_compra
             FROM vendas2
             WHERE forma_pagamento = 'Prazo'
+              AND id_empresa = @EMP@
             GROUP BY id_cliente
         )
         SELECT c.nome,
@@ -773,7 +792,7 @@ QList<QStringList> Relatorios_repository::buscarClientesInadimplentes()
         JOIN primeira_compra pc ON pc.id_cliente = c.id
         WHERE (d.total_devido - COALESCE(p.total_pago, 0)) > 0.005
         ORDER BY data_referencia ASC
-    )");
+    )").replace("@EMP@", empresaAtivaSql()));
 
     if (!query.exec()) {
         qDebug()

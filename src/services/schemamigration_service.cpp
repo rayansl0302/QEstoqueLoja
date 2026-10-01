@@ -1858,6 +1858,113 @@ SchemaMigration_service::Resultado SchemaMigration_service::update() {
             qDebug() << "Migracao para versao 18 concluida.";
             break;
         }
+        case 18:
+        {
+            // versao 19: multi-empresa. Cadastro de empresas (CNPJs) e a empresa de cada venda.
+            // Tudo que ja existia fica na empresa 1 (a original).
+            if (!db.transaction()) {
+                qDebug() << "Error: unable to start transaction";
+                return {false, SchemaErro::ErroMigracao, "Erro ao iniciar migracao 19", dbSchemaVersion};
+            }
+            const bool pg19 = DatabaseConnection_service::isPostgres();
+            const QString pk19 = pg19 ? "SERIAL PRIMARY KEY" : "INTEGER PRIMARY KEY AUTOINCREMENT";
+            const QString ts19 = pg19 ? "TIMESTAMP" : "DATETIME";
+            const QString addCol19 = pg19 ? "ADD COLUMN IF NOT EXISTS" : "ADD COLUMN";
+
+            const QStringList comandos19 = {
+                "CREATE TABLE IF NOT EXISTS empresas ("
+                "  id " + pk19 + ","
+                "  apelido TEXT NOT NULL,"
+                "  cnpj TEXT,"
+                "  razao_social TEXT,"
+                "  ativa BOOLEAN NOT NULL DEFAULT TRUE,"
+                "  criado_em " + ts19 + ")",
+                "INSERT INTO empresas (apelido, cnpj, razao_social, ativa, criado_em) "
+                "SELECT 'Empresa principal', '', '', TRUE, CURRENT_TIMESTAMP "
+                "WHERE NOT EXISTS (SELECT 1 FROM empresas)",
+                "ALTER TABLE vendas2 " + addCol19 + " id_empresa INTEGER NOT NULL DEFAULT 1",
+                "CREATE INDEX IF NOT EXISTS idx_vendas2_empresa ON vendas2(id_empresa)"
+            };
+            for (const QString &sql : comandos19) {
+                QSqlQuery query(db);
+                if (!query.exec(sql)) {
+                    const QString texto = query.lastError().text();
+                    if (!pg19 && sql.startsWith("ALTER TABLE") &&
+                        texto.contains("duplicate column", Qt::CaseInsensitive))
+                        continue;
+                    qDebug() << "Erro migracao 19:" << texto << "SQL:" << sql;
+                    db.rollback();
+                    return {false, SchemaErro::ErroMigracao, "Erro na migracao 19 (multi-empresa)", dbSchemaVersion};
+                }
+            }
+            if (!setSchemaVersion(19)) {
+                db.rollback();
+                return {false, SchemaErro::ErroMigracao, "Erro ao gravar versao 19", dbSchemaVersion};
+            }
+            if (!db.commit()) {
+                db.rollback();
+                return {false, SchemaErro::ErroMigracao, "Erro ao confirmar migracao 19", dbSchemaVersion};
+            }
+            dbSchemaVersion = 19;
+            qDebug() << "Migracao para versao 19 concluida.";
+            break;
+        }
+        case 19:
+        {
+            // versao 20: contas a pagar (parcelas, vencimento, baixa, por empresa).
+            if (!db.transaction()) {
+                qDebug() << "Error: unable to start transaction";
+                return {false, SchemaErro::ErroMigracao, "Erro ao iniciar migracao 20", dbSchemaVersion};
+            }
+            const bool pg20 = DatabaseConnection_service::isPostgres();
+            const QString pk20 = pg20 ? "SERIAL PRIMARY KEY" : "INTEGER PRIMARY KEY AUTOINCREMENT";
+            const QString ts20 = pg20 ? "TIMESTAMP" : "DATETIME";
+
+            const QStringList comandos20 = {
+                "CREATE TABLE IF NOT EXISTS contas_pagar ("
+                "  id " + pk20 + ","
+                "  id_empresa INTEGER NOT NULL DEFAULT 1,"
+                "  descricao TEXT NOT NULL,"
+                "  fornecedor TEXT,"
+                "  categoria TEXT,"
+                "  documento TEXT,"
+                "  valor DECIMAL(10,2) NOT NULL,"
+                "  vencimento TEXT NOT NULL,"
+                "  status TEXT NOT NULL DEFAULT 'ABERTA',"
+                "  valor_pago DECIMAL(10,2),"
+                "  forma_pagamento TEXT,"
+                "  pago_em " + ts20 + ","
+                "  parcela INTEGER NOT NULL DEFAULT 1,"
+                "  total_parcelas INTEGER NOT NULL DEFAULT 1,"
+                "  grupo TEXT,"
+                "  observacao TEXT,"
+                "  motivo_cancelamento TEXT,"
+                "  id_operador_sessao INTEGER,"
+                "  criado_em " + ts20 + " NOT NULL)",
+                "CREATE INDEX IF NOT EXISTS idx_contas_pagar_status ON contas_pagar(status, vencimento)",
+                "CREATE INDEX IF NOT EXISTS idx_contas_pagar_empresa ON contas_pagar(id_empresa)",
+                "CREATE INDEX IF NOT EXISTS idx_contas_pagar_grupo ON contas_pagar(grupo)"
+            };
+            for (const QString &sql : comandos20) {
+                QSqlQuery query(db);
+                if (!query.exec(sql)) {
+                    qDebug() << "Erro migracao 20:" << query.lastError().text() << "SQL:" << sql;
+                    db.rollback();
+                    return {false, SchemaErro::ErroMigracao, "Erro na migracao 20 (contas a pagar)", dbSchemaVersion};
+                }
+            }
+            if (!setSchemaVersion(20)) {
+                db.rollback();
+                return {false, SchemaErro::ErroMigracao, "Erro ao gravar versao 20", dbSchemaVersion};
+            }
+            if (!db.commit()) {
+                db.rollback();
+                return {false, SchemaErro::ErroMigracao, "Erro ao confirmar migracao 20", dbSchemaVersion};
+            }
+            dbSchemaVersion = 20;
+            qDebug() << "Migracao para versao 20 concluida.";
+            break;
+        }
 
         }
     }

@@ -6,8 +6,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>460</width>
-     <height>340</height>
+     <width>600</width>
+     <height>560</height>
     </rect>
    </property>
   <property name="windowTitle">
@@ -45,7 +45,7 @@ QPushButton { min-height: 34px; padding: 0 16px; }</string>
     <item>
      <widget class="QLabel" name="Lbl_Info">
       <property name="text">
-       <string>Escolha seu nome e informe o PIN. As vendas feitas nesta sessão ficam registradas com o seu nome. A última linha, "Entrar como gerente", usa o PIN geral da loja.</string>
+       <string>Toque no seu nome e digite o PIN. As vendas desta sessão ficam registradas com o seu nome. "Entrar como gerente" usa o PIN geral da loja.</string>
       </property>
       <property name="wordWrap">
        <bool>true</bool>

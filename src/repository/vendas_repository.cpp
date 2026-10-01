@@ -1,3 +1,4 @@
+#include "../infra/empresaativa.h"
 #include "vendas_repository.h"
 #include "../infra/databaseconnection_service.h"
 #include <QSqlQuery>
@@ -74,7 +75,8 @@ void Vendas_repository::listarVendas(QSqlQueryModel *model)
         "SELECT id, valor_final, forma_pagamento, data_hora, "
         "cliente, esta_pago, total, desconto, taxa, "
         "valor_recebido, id_cliente, troco "
-        "FROM vendas2 ORDER BY id DESC LIMIT 240",
+        "FROM vendas2 WHERE id_empresa = " + QString::number(EmpresaAtiva::id()) +
+        " ORDER BY id DESC LIMIT 240",
         db
         );
 
@@ -121,13 +123,14 @@ VendasDTO Vendas_repository::getVenda(qlonglong id){
 
     QSqlQuery query(db);
     query.prepare("SELECT cliente, data_hora, total, forma_pagamento, valor_recebido, troco, "
-                  "taxa, valor_final, desconto, esta_pago, id_cliente, id_caixa FROM vendas2 "
+                  "taxa, valor_final, desconto, esta_pago, id_cliente, id_caixa, id_empresa FROM vendas2 "
                   "WHERE id = :id_venda");
     query.bindValue(":id_venda", id);
     if(query.exec()){
         while (query.next()) {
             result.id = id;
             result.idCaixa = query.value("id_caixa").toLongLong();
+            result.idEmpresa = query.value("id_empresa").toLongLong();
             result.clienteNome = query.value("cliente").toString();
             result.dataHora = query.value("data_hora").toString();
             result.total = query.value("total").toDouble();
@@ -171,7 +174,8 @@ void Vendas_repository::listarVendasDeAteFormaPagamento(
         "SELECT id, valor_final, forma_pagamento, data_hora, cliente, "
         "esta_pago, total, desconto, taxa, valor_recebido, troco "
         "FROM vendas2 "
-        "WHERE data_hora BETWEEN :de AND :ate ";
+        "WHERE data_hora BETWEEN :de AND :ate "
+        "AND id_empresa = " + QString::number(EmpresaAtiva::id()) + " ";
 
     // filtro por cliente
     if (idCliente > 0) {
@@ -237,7 +241,8 @@ ResumoVendasDTO Vendas_repository::calcularResumo(
 
     QSqlQuery query(db);
 
-    QString where = " WHERE data_hora BETWEEN :de AND :ate ";
+    QString where = " WHERE data_hora BETWEEN :de AND :ate AND id_empresa = " +
+                    QString::number(EmpresaAtiva::id()) + " ";
 
     if (somentePrazo)
         where += " AND forma_pagamento = 'Prazo' ";
@@ -344,9 +349,10 @@ qlonglong Vendas_repository::inserir(VendasDTO venda){
     QSqlQuery query(db);
     query.prepare("INSERT INTO vendas2 (cliente, total, data_hora, forma_pagamento, "
                   "valor_recebido, troco, taxa, valor_final, desconto, id_cliente, esta_pago, id_caixa, "
-                  "id_operador_sessao) "
+                  "id_operador_sessao, id_empresa) "
                   "VALUES (:cliente, :total, :datahora, :formapag, :recebido, :troco, :taxa, "
-                  ":valorfinal, :desconto, :idcliente, :estapago, :idcaixa, :idoperadorsessao)");
+                  ":valorfinal, :desconto, :idcliente, :estapago, :idcaixa, :idoperadorsessao, :idempresa)");
+    query.bindValue(":idempresa", venda.idEmpresa > 0 ? venda.idEmpresa : EmpresaAtiva::id());
 
     query.bindValue(":cliente", venda.clienteNome);
     query.bindValue(":total", venda.total);

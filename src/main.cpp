@@ -18,6 +18,7 @@
 
     #include "services/operador_service.h"
     #include "services/sessao_service.h"
+    #include "services/contaspagar_service.h"
 
     namespace {
 
@@ -111,6 +112,11 @@
 
         // A MainWindow é construída antes do login porque é ela que aponta a conexão do banco
         // e roda a migração; a auditoria da sessão precisa das duas coisas prontas.
+        // Estornar pagamento e cancelar conta a pagar: só gerente (ou elevação), também no serviço.
+        ContasPagar_service::definirAutorizador([]() {
+            return Sessao_service::instancia()->autorizadoParaAdministrar();
+        });
+
         MainWindow w;
 
         // Nenhuma tela de venda abre antes de existir uma sessão aceita.
@@ -138,6 +144,9 @@
         w.setModoDesenvolvimento(modoDesenvolvimento);
         w.aplicarSessao();
         w.show();
+        // várias empresas (CNPJs): pergunta com qual vai trabalhar antes de vender
+        if (!QCoreApplication::arguments().contains("--preview-caixa"))
+            w.perguntarEmpresaSeNecessario();
         // atalho da Área de Trabalho: QEstoqueLoja --pdv abre direto a tela de venda
         const QStringList args = QCoreApplication::arguments();
         if (args.contains("--pdv"))
@@ -153,6 +162,8 @@
                 else if (tela == "fechar") slot = "fecharCaixaClicked";
                 else if (tela == "historico") slot = "historicoCaixaClicked";
                 else if (tela == "sangria") slot = "sangriaClicked";
+                else if (tela == "contas") slot = "abrirContasPagar";
+                else if (tela == "empresa") slot = "escolherEmpresaClicked";
                 if (slot)
                     QMetaObject::invokeMethod(&w, slot);
             });

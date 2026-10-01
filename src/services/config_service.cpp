@@ -1,4 +1,5 @@
 #include "config_service.h"
+#include "empresa_service.h"
 #include <QDir>
 #include "../infra/databaseconnection_service.h"
 
@@ -21,7 +22,10 @@ bool Config_service::salvarTudo(const ConfigDTO &dto, QString &erro)
     if(!validarFiscal(dto, erro)) return false;
 
     // persistência
-    return m_repo->saveAll(dto);
+    if (!m_repo->saveAll(dto))
+        return false;
+    Empresa_service::instancia()->sincronizarComConfig(dto);
+    return true;
 }
 
 bool Config_service::validarFiscal(const ConfigDTO &dto, QString &erro)

@@ -1,4 +1,5 @@
 #include "configuracao.h"
+#include "services/empresa_service.h"
 #include "ui_configuracao.h"
 #include <QFileDialog>
 #include <QMessageBox>
@@ -33,6 +34,8 @@ Configuracao::Configuracao(QWidget *parent)
 
     configDTO = configService->carregarTudo();
     configDTO_preMudancas = configDTO;
+    // os dados e o certificado valem para a empresa em uso
+    setWindowTitle(QStringLiteral("Configurações — %1").arg(Empresa_service::instancia()->ativa().apelido));
 
     ui->Ledt_CnpjEmpresa->setText(configDTO.cnpjEmpresa);
     ui->Ledt_EmailEmpresa->setText(configDTO.emailEmpresa);

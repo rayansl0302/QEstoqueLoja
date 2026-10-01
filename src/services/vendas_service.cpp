@@ -1,4 +1,5 @@
 #include "vendas_service.h"
+#include "../infra/empresaativa.h"
 #include <QDebug>
 
 Vendas_service::Vendas_service(QObject *parent)
@@ -69,6 +70,13 @@ Vendas_service::deletarVendaRegraNegocio(qlonglong idVenda, bool cancelarNf,
         }
 
         if(cancelarNf){
+            // o cancelamento é assinado com o certificado da empresa em uso: a nota de outra empresa
+            // só pode ser cancelada depois de trocar para ela
+            if(vendaCancelada.idEmpresa > 0 && vendaCancelada.idEmpresa != EmpresaAtiva::id()){
+                return {false, VendasErro::QuebraDeRegra,
+                        "Esta venda pertence a outra empresa (CNPJ). Troque para a empresa dela antes de "
+                        "cancelar a nota fiscal."};
+            }
             qlonglong idNf = notaServ.getIdFromIdVenda(idVenda);
             if(idNf != -1){
                 auto resultado = eventoServ.enviarCancelamento(idNf);
