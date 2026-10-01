@@ -17,6 +17,7 @@ InserirProduto::InserirProduto(QWidget *parent)
 {
     ui->setupUi(this);
     ui->tabWidget->setCurrentIndex(0);
+    connect(ui->Btn_Cancelar, &QPushButton::clicked, this, &QWidget::close);
 
     ui->Lbl_CEST->setVisible(false);
     ui->Ledit_CEST->setVisible(false);
@@ -56,7 +57,7 @@ InserirProduto::InserirProduto(QWidget *parent)
     ui->Ledit_CEST->setEnabled(false);
     ui->Lbl_CEST->setVisible(false);
 
-    on_Ledit_NCM_editingFinished();
+    atualizarInfoNcm(false);
 
 }
 
@@ -235,9 +236,22 @@ void InserirProduto::on_Ledit_PrecoFinal_textChanged(const QString &arg1)
 
 void InserirProduto::on_Ledit_NCM_editingFinished()
 {
+    atualizarInfoNcm(true);
+}
+
+// avisar = false na abertura da janela: o NCM padrão da configuração pode estar vazio ou antigo, e uma
+// janela de erro antes de a pessoa digitar qualquer coisa só atrapalha. O aviso fica na própria tela.
+void InserirProduto::atualizarInfoNcm(bool avisar)
+{
     QString ncmText = ui->Ledit_NCM->text();
+    // NCM vazio não é erro: só é exigido para quem emite nota. Avisa na tela, sem janela
+    if(ncmText.trimmed().isEmpty()){
+        ui->Lbl_NcmDesc->setText("Informe o NCM (8 dígitos) para produtos com nota fiscal.");
+        return;
+    }
     if(!util->eh_Valido_NCM(ncmText)){
-        QMessageBox::warning(this, "Atenção", "NCM inválido para NF");
+        if(avisar)
+            QMessageBox::warning(this, "Atenção", "NCM inválido para NF");
         ui->Lbl_NcmDesc->setText("Não Encontrado");
 
 

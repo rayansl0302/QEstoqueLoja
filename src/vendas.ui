@@ -22,9 +22,8 @@
   <property name="styleSheet">
    <string notr="true">
 #Vendas {
-  background-color: rgb(199, 199, 199);
-  background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0,
-    stop:0 rgba(199, 199, 199, 255), stop:1 rgba(170, 170, 170, 255));
+  background-color: #f3f6fa;
+  background-color: #f3f6fa;
 }
 QPushButton {
   background-color: rgb(43, 132, 191);
@@ -63,7 +62,7 @@ QPushButton:pressed {
   background-color: rgb(153, 193, 241);
 }
 QGroupBox {
-  background-color: rgb(170, 170, 170);
+  background-color: #e3e9f1;
   font: 700 9pt &quot;Segoe UI&quot;;
   font-size: 15px;
 }
@@ -398,13 +397,13 @@ QLabel {
            </property>
            <property name="minimumSize">
             <size>
-             <width>160</width>
+             <width>190</width>
              <height>32</height>
             </size>
            </property>
            <property name="maximumSize">
             <size>
-             <width>160</width>
+             <width>190</width>
              <height>32</height>
             </size>
            </property>
@@ -433,13 +432,13 @@ QLabel {
            </property>
            <property name="minimumSize">
             <size>
-             <width>160</width>
+             <width>190</width>
              <height>32</height>
             </size>
            </property>
            <property name="maximumSize">
             <size>
-             <width>160</width>
+             <width>190</width>
              <height>32</height>
             </size>
            </property>
@@ -468,13 +467,13 @@ QLabel {
            </property>
            <property name="minimumSize">
             <size>
-             <width>160</width>
+             <width>190</width>
              <height>32</height>
             </size>
            </property>
            <property name="maximumSize">
             <size>
-             <width>160</width>
+             <width>190</width>
              <height>32</height>
             </size>
            </property>
@@ -496,13 +495,13 @@ QLabel {
            </property>
            <property name="minimumSize">
             <size>
-             <width>160</width>
+             <width>190</width>
              <height>32</height>
             </size>
            </property>
            <property name="maximumSize">
             <size>
-             <width>160</width>
+             <width>190</width>
              <height>32</height>
             </size>
            </property>

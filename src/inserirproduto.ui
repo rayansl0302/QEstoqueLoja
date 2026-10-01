@@ -6,453 +6,456 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>424</width>
-    <height>452</height>
+    <width>720</width>
+    <height>660</height>
    </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>640</width>
+    <height>620</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>Inserir Produto</string>
   </property>
   <property name="styleSheet">
-   <string notr="true">
-#InserirProduto {
-  background-color: rgb(199, 199, 199);
-  background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0,
-    stop:0 rgba(199, 199, 199, 255), stop:1 rgba(170, 170, 170, 255));
-}
-QPushButton {
-  background-color: rgb(43, 132, 191);
-  color: rgb(255, 255, 255);
-  font-size: 13px;
-  border-radius: 10px;
-}
-QPushButton:hover {
-  background-color: rgb(13, 92, 161);
-}
-QPushButton:pressed {
-  color: rgb(255, 255, 255);
-  background-color: rgb(153, 193, 241);
-  font-size: 13px;
-  border-radius: 10px;
-}
-QTabWidget {
-  background-color: rgb(222, 221, 218);
-}
-QGroupBox {
-  background-color: rgb(170, 170, 170);
-  font: 700 9pt &quot;Segoe UI&quot;;
-  font-size: 15px;
-}
-   </string>
+   <string notr="true">#InserirProduto { background-color: #f3f6fa; }
+#label_11 { font-size: 20pt; font-weight: 700; color: #16324f; }
+#Lbl_Subtitulo { color: #5b6b7f; }
+#Lbl_DicaPreco { font-weight: 400; color: #5b6b7f; background: #eaf3fb; border-radius: 8px; padding: 8px 10px; }
+#Lbl_NcmDesc { font-weight: 400; color: #475569; }
+QGroupBox QLabel { color: #1e3a5f; font-weight: 600; background: transparent; }
+QGroupBox { background-color: white; border: 1px solid #d5dee9; border-radius: 10px; margin-top: 16px; padding: 16px 14px 12px 14px; font-weight: 700; }
+QGroupBox::title { subcontrol-origin: margin; left: 14px; padding: 0 6px; color: #1e3a5f; background-color: #f3f6fa; }
+QLineEdit, QComboBox { min-height: 28px; }
+QTabWidget::pane { background: transparent; border: none; top: 0px; }
+QCheckBox#Check_Nf { font-weight: 700; color: #1e3a5f; spacing: 8px; padding: 8px 4px; }</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0">
+  <layout class="QVBoxLayout" name="verticalLayout_raiz">
+   <property name="spacing">
+    <number>10</number>
+   </property>
+   <property name="leftMargin">
+    <number>22</number>
+   </property>
+   <property name="topMargin">
+    <number>18</number>
+   </property>
+   <property name="rightMargin">
+    <number>22</number>
+   </property>
+   <property name="bottomMargin">
+    <number>16</number>
+   </property>
+   <item>
     <widget class="QLabel" name="label_11">
-     <property name="styleSheet">
-      <string notr="true">font: 700 15pt &quot;Ubuntu&quot;;</string>
-     </property>
      <property name="text">
-      <string>Cadastrar Produto</string>
+      <string>Cadastrar produto</string>
      </property>
     </widget>
    </item>
-   <item row="2" column="1">
-    <widget class="QPushButton" name="Btn_Enviar">
-     <property name="minimumSize">
-      <size>
-       <width>50</width>
-       <height>25</height>
-      </size>
-     </property>
+   <item>
+    <widget class="QLabel" name="Lbl_Subtitulo">
      <property name="text">
-      <string>OK</string>
+      <string>Preencha os dados do produto. Os campos de imposto só são necessários para quem emite nota fiscal.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
      </property>
     </widget>
    </item>
-   <item row="2" column="0">
-    <spacer name="horizontalSpacer">
-     <property name="orientation">
-      <enum>Qt::Orientation::Horizontal</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>543</width>
-       <height>20</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
-   <item row="1" column="0" colspan="2">
+   <item>
     <widget class="QTabWidget" name="tabWidget">
-     <property name="styleSheet">
-      <string notr="true"/>
-     </property>
      <property name="currentIndex">
-      <number>1</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
        <string>Principal</string>
       </attribute>
-      <widget class="QWidget" name="layoutWidget">
-       <property name="geometry">
-        <rect>
-         <x>210</x>
-         <y>120</y>
-         <width>161</width>
-         <height>32</height>
-        </rect>
+      <layout class="QVBoxLayout" name="verticalLayout_tab1">
+       <property name="spacing">
+        <number>6</number>
        </property>
-       <layout class="QHBoxLayout" name="horizontalLayout_3">
-        <item>
-         <widget class="QLabel" name="label_3">
-          <property name="text">
-           <string>Quantidade 
-Estoque:</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="CustomLineEdit" name="Ledit_Quant"/>
-        </item>
-       </layout>
-      </widget>
-      <widget class="QWidget" name="layoutWidget">
-       <property name="geometry">
-        <rect>
-         <x>20</x>
-         <y>80</y>
-         <width>361</width>
-         <height>24</height>
-        </rect>
+       <property name="leftMargin">
+        <number>0</number>
        </property>
-       <layout class="QHBoxLayout" name="horizontalLayout_2">
-        <item>
-         <widget class="QLabel" name="label_2">
-          <property name="text">
-           <string>Descrição:</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="CustomLineEdit" name="Ledit_Desc"/>
-        </item>
-       </layout>
-      </widget>
-      <widget class="QWidget" name="layoutWidget">
-       <property name="geometry">
-        <rect>
-         <x>20</x>
-         <y>40</y>
-         <width>351</width>
-         <height>31</height>
-        </rect>
+       <property name="topMargin">
+        <number>8</number>
        </property>
-       <layout class="QHBoxLayout" name="horizontalLayout">
-        <item>
-         <widget class="QLabel" name="label">
-          <property name="text">
-           <string>Código de Barras:</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="CustomLineEdit" name="Ledit_CBarras"/>
-        </item>
-        <item>
-         <widget class="QPushButton" name="Btn_GerarCBarras">
-          <property name="minimumSize">
-           <size>
-            <width>40</width>
-            <height>25</height>
-           </size>
-          </property>
-          <property name="maximumSize">
-           <size>
-            <width>40</width>
-            <height>25</height>
-           </size>
-          </property>
-          <property name="baseSize">
-           <size>
-            <width>30</width>
-            <height>20</height>
-           </size>
-          </property>
-          <property name="text">
-           <string>Gerar</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </widget>
-      <widget class="QGroupBox" name="groupBox">
-       <property name="geometry">
-        <rect>
-         <x>20</x>
-         <y>180</y>
-         <width>261</width>
-         <height>151</height>
-        </rect>
+       <property name="rightMargin">
+        <number>0</number>
        </property>
-       <property name="title">
-        <string>Preços</string>
+       <property name="bottomMargin">
+        <number>0</number>
        </property>
-       <widget class="QWidget" name="layoutWidget">
-        <property name="geometry">
-         <rect>
-          <x>10</x>
-          <y>110</y>
-          <width>221</width>
-          <height>24</height>
-         </rect>
-        </property>
-        <layout class="QHBoxLayout" name="horizontalLayout_4">
-         <item>
-          <widget class="QLabel" name="label_4">
-           <property name="text">
-            <string>Preço Final:</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLineEdit" name="Ledit_PrecoFinal"/>
-         </item>
-        </layout>
-       </widget>
-       <widget class="QWidget" name="layoutWidget">
-        <property name="geometry">
-         <rect>
-          <x>10</x>
-          <y>60</y>
-          <width>221</width>
-          <height>33</height>
-         </rect>
-        </property>
-        <layout class="QHBoxLayout" name="horizontalLayout_8">
-         <item>
-          <widget class="QLabel" name="label_9">
-           <property name="text">
-            <string>Percentual de 
- Lucro(%):</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLineEdit" name="Ledit_PercentualLucro"/>
-         </item>
-        </layout>
-       </widget>
-       <widget class="QWidget" name="layoutWidget">
-        <property name="geometry">
-         <rect>
-          <x>10</x>
-          <y>20</y>
-          <width>231</width>
-          <height>33</height>
-         </rect>
-        </property>
-        <layout class="QHBoxLayout" name="horizontalLayout_9">
-         <item>
-          <widget class="QLabel" name="label_8">
-           <property name="text">
-            <string>Preço Fornecedor:</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="CustomLineEdit" name="Ledit_PrecoFornecedor"/>
-         </item>
-        </layout>
-       </widget>
-      </widget>
-      <widget class="QWidget" name="layoutWidget">
-       <property name="geometry">
-        <rect>
-         <x>20</x>
-         <y>120</y>
-         <width>160</width>
-         <height>32</height>
-        </rect>
-       </property>
-       <layout class="QHBoxLayout" name="horizontalLayout_5">
-        <item>
-         <widget class="QLabel" name="label_5">
-          <property name="text">
-           <string>Unidade 
-Comercial:</string>
+       <item>
+        <widget class="QGroupBox" name="groupBoxIdent">
+         <property name="title">
+          <string>Identificação</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_ident">
+          <property name="horizontalSpacing">
+           <number>12</number>
           </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QComboBox" name="CBox_UCom"/>
-        </item>
-       </layout>
-      </widget>
+          <property name="verticalSpacing">
+           <number>6</number>
+          </property>
+          <item row="0" column="0" colspan="2">
+           <widget class="QLabel" name="label">
+            <property name="text">
+             <string>Código de barras</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0" colspan="2">
+           <layout class="QHBoxLayout" name="horizontalLayout">
+            <property name="spacing">
+             <number>8</number>
+            </property>
+            <item>
+             <widget class="CustomLineEdit" name="Ledit_CBarras">
+              <property name="placeholderText">
+               <string>Leia com o leitor ou digite</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="Btn_GerarCBarras">
+              <property name="minimumSize">
+               <size>
+                <width>90</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="toolTip">
+               <string>Gera um código de barras interno para o produto</string>
+              </property>
+              <property name="text">
+               <string>Gerar</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="2" column="0" colspan="2">
+           <widget class="QLabel" name="label_2">
+            <property name="text">
+             <string>Descrição</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0" colspan="2">
+           <widget class="CustomLineEdit" name="Ledit_Desc">
+            <property name="placeholderText">
+             <string>Nome do produto como aparece na venda</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="label_5">
+            <property name="text">
+             <string>Unidade comercial</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QLabel" name="label_3">
+            <property name="text">
+             <string>Quantidade em estoque</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QComboBox" name="CBox_UCom"/>
+          </item>
+          <item row="5" column="1">
+           <widget class="CustomLineEdit" name="Ledit_Quant">
+            <property name="placeholderText">
+             <string>0</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBox">
+         <property name="title">
+          <string>Preços (R$)</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_precos">
+          <property name="horizontalSpacing">
+           <number>12</number>
+          </property>
+          <property name="verticalSpacing">
+           <number>6</number>
+          </property>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_8">
+            <property name="text">
+             <string>Preço do fornecedor</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLabel" name="label_9">
+            <property name="text">
+             <string>Lucro (%)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="2">
+           <widget class="QLabel" name="label_4">
+            <property name="text">
+             <string>Preço final</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="CustomLineEdit" name="Ledit_PrecoFornecedor">
+            <property name="placeholderText">
+             <string>0,00</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="Ledit_PercentualLucro">
+            <property name="placeholderText">
+             <string>0</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2">
+           <widget class="QLineEdit" name="Ledit_PrecoFinal">
+            <property name="placeholderText">
+             <string>0,00</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0" colspan="3">
+           <widget class="QLabel" name="Lbl_DicaPreco">
+            <property name="text">
+             <string>Informe o preço do fornecedor e o lucro: o preço final é calculado. Ou digite o preço final e o lucro é recalculado.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer_tab1">
+         <property name="orientation">
+          <enum>Qt::Orientation::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>10</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
      </widget>
      <widget class="QWidget" name="tab_2">
       <attribute name="title">
        <string>Imposto</string>
       </attribute>
-      <widget class="QCheckBox" name="Check_Nf">
-       <property name="geometry">
-        <rect>
-         <x>10</x>
-         <y>10</y>
-         <width>41</width>
-         <height>21</height>
-        </rect>
+      <layout class="QVBoxLayout" name="verticalLayout_tab2">
+       <property name="spacing">
+        <number>6</number>
        </property>
-       <property name="text">
-        <string>NF</string>
+       <property name="leftMargin">
+        <number>0</number>
        </property>
-       <property name="checked">
-        <bool>false</bool>
+       <property name="topMargin">
+        <number>8</number>
        </property>
-      </widget>
-      <widget class="QWidget" name="layoutWidget">
-       <property name="geometry">
-        <rect>
-         <x>10</x>
-         <y>220</y>
-         <width>251</width>
-         <height>24</height>
-        </rect>
+       <property name="rightMargin">
+        <number>0</number>
        </property>
-       <layout class="QHBoxLayout" name="horizontalLayout_7">
-        <item>
-         <widget class="QLabel" name="Lbl_CEST">
-          <property name="toolTip">
-           <string>Código Especificador da Substituição Tributária,  você geralmente pode deixar em branco.</string>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QCheckBox" name="Check_Nf">
+         <property name="text">
+          <string>Este produto sai com nota fiscal (NF)</string>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBoxFiscal">
+         <property name="title">
+          <string>Dados fiscais</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_fiscal">
+          <property name="horizontalSpacing">
+           <number>12</number>
           </property>
-          <property name="text">
-           <string>CEST:</string>
+          <property name="verticalSpacing">
+           <number>6</number>
           </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="CustomLineEdit" name="Ledit_CEST"/>
-        </item>
-       </layout>
-      </widget>
-      <widget class="QWidget" name="layoutWidget">
-       <property name="geometry">
-        <rect>
-         <x>10</x>
-         <y>100</y>
-         <width>251</width>
-         <height>47</height>
-        </rect>
-       </property>
-       <layout class="QHBoxLayout" name="horizontalLayout_10">
-        <item>
-         <widget class="QLabel" name="label_10">
-          <property name="toolTip">
-           <string>Porcentagem de ICMS aproximada cobrado de cada produto, APENAS PARA INFORMAÇÃO NA NF.</string>
-          </property>
-          <property name="text">
-           <string>Aliquota Imposto
-Aproximada(IBPT)(%) :</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="Ledit_Aliquota"/>
-        </item>
-       </layout>
-      </widget>
-      <widget class="QLabel" name="Lbl_NcmDesc">
-       <property name="geometry">
-        <rect>
-         <x>10</x>
-         <y>70</y>
-         <width>371</width>
-         <height>21</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>Descrição: NCM</string>
-       </property>
-       <property name="wordWrap">
-        <bool>true</bool>
-       </property>
-      </widget>
-      <widget class="QWidget" name="layoutWidget">
-       <property name="geometry">
-        <rect>
-         <x>10</x>
-         <y>40</y>
-         <width>251</width>
-         <height>26</height>
-        </rect>
-       </property>
-       <layout class="QHBoxLayout" name="horizontalLayout_11">
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_6">
-          <item>
+          <item row="0" column="0" colspan="2">
            <widget class="QLabel" name="label_6">
             <property name="toolTip">
              <string>Nomenclatura Comum do Mercosul, pesquise o codigo correto para seu produto.</string>
             </property>
             <property name="text">
-             <string>NCM:</string>
+             <string>NCM</string>
             </property>
            </widget>
           </item>
-          <item>
-           <widget class="CustomLineEdit" name="Ledit_NCM"/>
+          <item row="1" column="0" colspan="2">
+           <widget class="CustomLineEdit" name="Ledit_NCM">
+            <property name="toolTip">
+             <string>Nomenclatura Comum do Mercosul, pesquise o codigo correto para seu produto.</string>
+            </property>
+            <property name="placeholderText">
+             <string>8 dígitos</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0" colspan="2">
+           <widget class="QLabel" name="Lbl_NcmDesc">
+            <property name="text">
+             <string>Descrição: NCM</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="label_12">
+            <property name="text">
+             <string>CSOSN</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QLabel" name="label_13">
+            <property name="text">
+             <string>CST PIS/COFINS</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLineEdit" name="Ledit_CSOSN"/>
+          </item>
+          <item row="4" column="1">
+           <widget class="QLineEdit" name="Ledit_PIS"/>
+          </item>
+          <item row="5" column="0" colspan="2">
+           <widget class="QLabel" name="label_10">
+            <property name="toolTip">
+             <string>Porcentagem de ICMS aproximada cobrado de cada produto, APENAS PARA INFORMAÇÃO NA NF.</string>
+            </property>
+            <property name="text">
+             <string>Alíquota de imposto aproximada (IBPT) (%)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="0" colspan="2">
+           <widget class="QLineEdit" name="Ledit_Aliquota">
+            <property name="toolTip">
+             <string>Porcentagem de ICMS aproximada cobrado de cada produto, APENAS PARA INFORMAÇÃO NA NF.</string>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="0" colspan="2">
+           <widget class="QLabel" name="Lbl_CEST">
+            <property name="toolTip">
+             <string>Código Especificador da Substituição Tributária,  você geralmente pode deixar em branco.</string>
+            </property>
+            <property name="text">
+             <string>CEST</string>
+            </property>
+           </widget>
+          </item>
+          <item row="8" column="0" colspan="2">
+           <widget class="CustomLineEdit" name="Ledit_CEST"/>
           </item>
          </layout>
-        </item>
-       </layout>
-      </widget>
-      <widget class="QWidget" name="layoutWidget">
-       <property name="geometry">
-        <rect>
-         <x>10</x>
-         <y>150</y>
-         <width>251</width>
-         <height>24</height>
-        </rect>
-       </property>
-       <layout class="QHBoxLayout" name="horizontalLayout_12">
-        <item>
-         <widget class="QLabel" name="label_12">
-          <property name="text">
-           <string>CSOSN:</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="Ledit_CSOSN"/>
-        </item>
-       </layout>
-      </widget>
-      <widget class="QWidget" name="layoutWidget">
-       <property name="geometry">
-        <rect>
-         <x>10</x>
-         <y>180</y>
-         <width>251</width>
-         <height>32</height>
-        </rect>
-       </property>
-       <layout class="QHBoxLayout" name="horizontalLayout_13">
-        <item>
-         <widget class="QLabel" name="label_13">
-          <property name="text">
-           <string>CST 
-PIS/COFINS:</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="Ledit_PIS"/>
-        </item>
-       </layout>
-      </widget>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer_tab2">
+         <property name="orientation">
+          <enum>Qt::Orientation::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>10</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
      </widget>
     </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_botoes">
+     <property name="spacing">
+      <number>10</number>
+     </property>
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="Btn_Cancelar">
+       <property name="minimumSize">
+        <size>
+         <width>110</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QPushButton { background: white; color: #1e3a5f; border: 1px solid #c9d3df; }
+QPushButton:hover { background: #eaf3fb; border-color: #2b84bf; }</string>
+       </property>
+       <property name="text">
+        <string>Cancelar</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="Btn_Enviar">
+       <property name="minimumSize">
+        <size>
+         <width>150</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>Salvar produto</string>
+       </property>
+       <property name="default">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
   </layout>
  </widget>
@@ -465,6 +468,7 @@ PIS/COFINS:</string>
  </customwidgets>
  <tabstops>
   <tabstop>Ledit_CBarras</tabstop>
+  <tabstop>Btn_GerarCBarras</tabstop>
   <tabstop>Ledit_Desc</tabstop>
   <tabstop>CBox_UCom</tabstop>
   <tabstop>Ledit_Quant</tabstop>
@@ -472,13 +476,13 @@ PIS/COFINS:</string>
   <tabstop>Ledit_PercentualLucro</tabstop>
   <tabstop>Ledit_PrecoFinal</tabstop>
   <tabstop>Btn_Enviar</tabstop>
-  <tabstop>Btn_GerarCBarras</tabstop>
+  <tabstop>Btn_Cancelar</tabstop>
   <tabstop>tabWidget</tabstop>
   <tabstop>Check_Nf</tabstop>
   <tabstop>Ledit_NCM</tabstop>
-  <tabstop>Ledit_Aliquota</tabstop>
   <tabstop>Ledit_CSOSN</tabstop>
   <tabstop>Ledit_PIS</tabstop>
+  <tabstop>Ledit_Aliquota</tabstop>
   <tabstop>Ledit_CEST</tabstop>
  </tabstops>
  <resources/>

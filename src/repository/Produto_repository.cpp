@@ -135,6 +135,37 @@ bool Produto_Repository::deletar(const QString &id, QString &erroSQL)
     return true;
 }
 
+QList<ProdutoVendaRefDTO> Produto_Repository::vendasDoProduto(const QString &id)
+{
+    QList<ProdutoVendaRefDTO> lista;
+    if (!DatabaseConnection_service::open())
+        return lista;
+    QSqlQuery q(db);
+    q.prepare("SELECT pv.id_venda, v.data_hora, v.cliente, pv.quantidade, pv.preco_vendido, v.valor_final, "
+              "v.forma_pagamento, v.id_empresa, v.esta_pago "
+              "FROM produtos_vendidos pv LEFT JOIN vendas2 v ON v.id = pv.id_venda "
+              "WHERE pv.id_produto = :id ORDER BY pv.id_venda DESC");
+    q.bindValue(":id", id);
+    if (!q.exec()) {
+        qDebug() << "vendasDoProduto:" << q.lastError().text();
+        return lista;
+    }
+    while (q.next()) {
+        ProdutoVendaRefDTO r;
+        r.idVenda = q.value(0).isNull() ? 0 : q.value(0).toLongLong();
+        r.dataHora = q.value(1).toString();
+        r.cliente = q.value(2).toString();
+        r.quantidade = q.value(3).toDouble();
+        r.precoVendido = q.value(4).toDouble();
+        r.valorFinalVenda = q.value(5).toDouble();
+        r.formaPagamento = q.value(6).toString();
+        r.idEmpresa = q.value(7).isNull() ? 0 : q.value(7).toLongLong();
+        r.estaPago = q.value(8).isNull() ? true : q.value(8).toBool();
+        lista.append(r);
+    }
+    return lista;
+}
+
 void Produto_Repository::pesquisar(const QStringList &palavras,
                                               const QString &textoNormalizado, QSqlQueryModel* model)
 {

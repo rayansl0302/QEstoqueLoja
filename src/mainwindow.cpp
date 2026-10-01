@@ -63,6 +63,7 @@
 #include "menuinicial.h"
 #include "util/icones.h"
 #include "empresadialog.h"
+#include "produtoemvendasdialog.h"
 #include "contaspagarjanela.h"
 #include "services/empresa_service.h"
 #include "services/contaspagar_service.h"
@@ -295,6 +296,14 @@ void MainWindow::on_Btn_Delete_clicked()
     QString productId = idVariant.toString();
     QString productDesc = descVariant.toString();
 
+    // produto que já saiu em venda não se apaga: mostra em quais vendas ele está
+    const QList<ProdutoVendaRefDTO> vendasDoProduto = produtoService->vendasDoProduto(productId);
+    if(!vendasDoProduto.isEmpty()){
+        ProdutoEmVendasDialog dlg(productDesc, vendasDoProduto, [this]() { ui->Btn_Venda->click(); }, this);
+        dlg.exec();
+        return;
+    }
+
     // Cria uma mensagem de confirmação
     QMessageBox::StandardButton resposta;
     resposta = QMessageBox::question(
@@ -309,7 +318,9 @@ void MainWindow::on_Btn_Delete_clicked()
     if (resposta == QMessageBox::Yes) {
         auto resultado = produtoService->deletar(productId);
         if(!resultado.ok){
-            QMessageBox::warning(this,"Erro","Ocorreu um erro ao deletar o produto");
+            QMessageBox::warning(this, "Erro",
+                                 resultado.msg.isEmpty() ? QStringLiteral("Ocorreu um erro ao deletar o produto")
+                                                         : "Não foi possível apagar o produto:\n" + resultado.msg);
             return;
         }
         atualizarTableview();

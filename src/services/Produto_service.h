@@ -19,7 +19,8 @@ enum class ProdutoErro {
     QuantidadeInvalida,
     ErroBanco,
     PrecoInvalido,
-    Update
+    Update,
+    EmUso            // produto já vendido: não pode ser apagado
 };
 
 class Produto_Service : QObject
@@ -45,6 +46,8 @@ public:
   void listarProdutos(QSqlQueryModel *model);
   QSqlQueryModel *getProdutoPeloCodigo(const QString &codigoBarras);
   Resultado deletar(const QString &id);
+  // vendas em que o produto aparece (para mostrar ao tentar apagar)
+  QList<ProdutoVendaRefDTO> vendasDoProduto(const QString &id);
   static QString normalizeText(const QString &text);
   void pesquisar(const QString &texto, QSqlQueryModel *);
   QSqlDatabase db;

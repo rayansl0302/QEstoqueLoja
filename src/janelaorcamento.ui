@@ -22,8 +22,7 @@
   <property name="styleSheet">
    <string notr="true">
 #JanelaOrcamento {
-  background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0,
-    stop:0 rgba(199, 199, 199, 255), stop:1 rgba(170, 170, 170, 255));
+  background-color: #f3f6fa;
 }
 QPushButton {
   background-color: rgb(43, 132, 191);
@@ -54,6 +53,15 @@ QTableView {
   gridline-color: rgb(230, 232, 238);
   selection-background-color: rgb(210, 228, 248);
   selection-color: rgb(30, 50, 80);
+}
+QHeaderView::section {
+  background-color: #eaf0f7;
+  color: #1e3a5f;
+  font-weight: 700;
+  border: none;
+  border-right: 1px solid #d5dee9;
+  border-bottom: 2px solid #2b84bf;
+  padding: 6px 8px;
 }
    </string>
   </property>
@@ -90,8 +98,8 @@ QTableView {
      <property name="styleSheet">
       <string notr="true">
 #leftPanel {
-  background-color: rgb(182, 182, 182);
-  border-right: 1px solid rgb(155, 155, 155);
+  background-color: #e9eef5;
+  border-right: 1px solid #d5dee9;
 }
       </string>
      </property>
@@ -133,7 +141,7 @@ QTableView {
          </size>
         </property>
         <property name="styleSheet">
-         <string notr="true">background-color: rgb(150, 150, 150);</string>
+         <string notr="true">background-color: #d5dee9;</string>
         </property>
         <property name="frameShape">
          <enum>QFrame::Shape::HLine</enum>
@@ -245,13 +253,13 @@ QTableView {
           </property>
           <property name="minimumSize">
            <size>
-            <width>100</width>
+            <width>140</width>
             <height>26</height>
            </size>
           </property>
           <property name="maximumSize">
            <size>
-            <width>100</width>
+            <width>140</width>
             <height>26</height>
            </size>
           </property>
@@ -444,9 +452,9 @@ QTableView {
         <property name="styleSheet">
          <string notr="true">
 #footerBar {
-  background-color: rgb(190, 192, 196);
+  background-color: #e3e9f1;
   border-radius: 8px;
-  border: 1px solid rgb(165, 168, 175);
+  border: 1px solid #d5dee9;
 }
          </string>
         </property>

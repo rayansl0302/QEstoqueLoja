@@ -9,6 +9,10 @@
 #include "infra/empresaativa.h"
 #include "repository/relatorios_repository.h"
 #include <QSqlQueryModel>
+#include <QSqlQuery>
+#include <QSqlError>
+#include "services/Produto_service.h"
+#include "infra/databaseconnection_service.h"
 
 namespace {
 QString cnpjDeTeste(int n)
@@ -273,6 +277,68 @@ void TestEmpresaContas::editar_empresa_corrige_nome_cnpj_e_valida_duplicidade()
     QVERIFY(es->definirAtivaNoCadastro(b.id, true).ok);
     QVERIFY(es->getPorId(b.id).ativa);
     QCOMPARE(es->quantidadeDeVendas(b.id), 0);
+}
+
+void TestEmpresaContas::produto_vendido_nao_e_apagado_e_lista_as_vendas()
+{
+    QSqlDatabase db = DatabaseConnection_service::db();
+    const QString desc = "PRODUTO VENDIDO " + QUuid::createUuid().toString(QUuid::Id128).left(6);
+    auto novoProduto = [&](const QString &d) {
+        QSqlQuery q(db);
+        q.prepare("INSERT INTO produtos (quantidade, descricao, preco, codigo_barras, nf, un_comercial, "
+                  "preco_fornecedor, porcent_lucro, ncm, cest, aliquota_imposto, csosn, pis, adicionado_em, atualizado_em) "
+                  "VALUES (5, :d, 10, :cb, 0, 'UN', 5, 0, '', '', 0, '', '', '2025-01-01 00:00:00', '2025-01-01 00:00:00')");
+        q.bindValue(":d", d);
+        q.bindValue(":cb", QUuid::createUuid().toString(QUuid::Id128).left(12));
+        [&]() { QVERIFY2(q.exec(), qPrintable(q.lastError().text())); }();
+        return q.lastInsertId().toLongLong();
+    };
+    const qlonglong idProd = novoProduto(desc);
+    const qlonglong idLivre = novoProduto(desc + " LIVRE");
+    QVERIFY(idProd > 0 && idLivre > 0);
+
+    // uma venda na empresa original
+    Vendas_repository vendas;
+    VendasDTO v;
+    v.clienteNome = "Cliente Teste";
+    v.dataHora = "2031-05-10 09:30:00";
+    v.total = 20;
+    v.valorFinal = 20;
+    v.formaPagamento = "Pix";
+    v.estaPago = true;
+    v.idCliente = 1;
+    const qlonglong idVenda = vendas.inserir(v);
+    QVERIFY(idVenda > 0);
+    QSqlQuery pv(db);
+    pv.prepare("INSERT INTO produtos_vendidos (id_produto, id_venda, quantidade, preco_vendido, adicionado_em, "
+               "atualizado_em, emitido_nf) VALUES (:p, :v, 2, 10, '2031-05-10 09:30:00', '2031-05-10 09:30:00', 0)");
+    pv.bindValue(":p", idProd);
+    pv.bindValue(":v", idVenda);
+    QVERIFY2(pv.exec(), qPrintable(pv.lastError().text()));
+
+    Produto_Service ps;
+    const QList<ProdutoVendaRefDTO> refs = ps.vendasDoProduto(QString::number(idProd));
+    QCOMPARE(refs.size(), 1);
+    QCOMPARE(refs.first().idVenda, idVenda);
+    QCOMPARE(refs.first().cliente, QStringLiteral("Cliente Teste"));
+    QCOMPARE(refs.first().quantidade, 2.0);
+    QCOMPARE(refs.first().valorFinalVenda, 20.0);
+    QCOMPARE(refs.first().formaPagamento, QStringLiteral("Pix"));
+    QCOMPARE(refs.first().idEmpresa, 1LL);
+
+    const auto negado = ps.deletar(QString::number(idProd));
+    QVERIFY(!negado.ok);
+    QCOMPARE(negado.erro, ProdutoErro::EmUso);
+    QVERIFY(negado.msg.contains("1 venda"));
+
+    // produto sem venda continua podendo ser apagado
+    QVERIFY(ps.vendasDoProduto(QString::number(idLivre)).isEmpty());
+    QVERIFY(ps.deletar(QString::number(idLivre)).ok);
+
+    // cancelando a venda (some o item), o produto pode ser apagado
+    QSqlQuery del(db);
+    QVERIFY(del.exec(QString("DELETE FROM produtos_vendidos WHERE id_venda = %1").arg(idVenda)));
+    QVERIFY(ps.deletar(QString::number(idProd)).ok);
 }
 
 void TestEmpresaContas::dividir_valor_soma_exata()

@@ -239,7 +239,7 @@
            <widget class="QPushButton" name="Btn_LogoEmpresa">
             <property name="maximumSize">
              <size>
-              <width>100</width>
+              <width>170</width>
               <height>25</height>
              </size>
             </property>

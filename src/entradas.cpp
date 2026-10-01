@@ -41,6 +41,8 @@ Entradas::Entradas(QWidget *parent)
     , ui(new Ui::Entradas)
 {
     ui->setupUi(this);
+    // filtros colados no topo (sem isso os rótulos se espalham pela altura da janela)
+    ui->vl_filtros->setAlignment(Qt::AlignTop);
     Config_service *confServ = new Config_service(this);
     configDTO = confServ->carregarTudo();
 

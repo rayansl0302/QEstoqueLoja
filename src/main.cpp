@@ -163,6 +163,14 @@
                 else if (tela == "historico") slot = "historicoCaixaClicked";
                 else if (tela == "sangria") slot = "sangriaClicked";
                 else if (tela == "contas") slot = "abrirContasPagar";
+                else if (tela == "produto") slot = "on_Btn_AddProd_clicked";
+                else if (tela == "clientes") slot = "on_Btn_Clientes_clicked";
+                else if (tela == "vendas") slot = "on_Btn_Venda_clicked";
+                else if (tela == "orcamento") slot = "on_Btn_Orcamento_clicked";
+                else if (tela == "entradas") slot = "on_Btn_Entradas_clicked";
+                else if (tela == "relatorios") slot = "on_Btn_Relatorios_clicked";
+                else if (tela == "config") slot = "on_actionConfig_triggered";
+                else if (tela == "monitor") slot = "on_actionMonitor_Fiscal_triggered";
                 else if (tela == "empresa") slot = "escolherEmpresaClicked";
                 if (slot)
                     QMetaObject::invokeMethod(&w, slot);

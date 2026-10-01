@@ -39,6 +39,7 @@ private slots:
     void on_Ledit_Desc_editingFinished();
 
 private:
+    void atualizarInfoNcm(bool avisar);
 
     Ui::InserirProduto *ui;
     QSet<QString> generatedNumbers;

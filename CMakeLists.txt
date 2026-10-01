@@ -337,6 +337,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/logacessodialog.h src/logacessodialog.cpp
         src/menuinicial.h src/menuinicial.cpp
         src/empresadialog.h src/empresadialog.cpp
+        src/produtoemvendasdialog.h src/produtoemvendasdialog.cpp
         src/contaspagarjanela.h src/contaspagarjanela.cpp
         src/contapagardialogs.h src/contapagardialogs.cpp
         src/movimentacaocaixa.h src/movimentacaocaixa.cpp src/movimentacaocaixa.ui

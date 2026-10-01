@@ -111,8 +111,19 @@ Produto_Service::Resultado Produto_Service::inserir(const ProdutoDTO &p)
     return {true, ProdutoErro::Nenhum, ""};
 }
 
+QList<ProdutoVendaRefDTO> Produto_Service::vendasDoProduto(const QString &id){
+    return repo.vendasDoProduto(id);
+}
+
 Produto_Service::Resultado Produto_Service::deletar(const QString &id){
     QString errosql = "";
+
+    // produto que já saiu em venda não se apaga: o histórico da venda aponta para ele
+    const QList<ProdutoVendaRefDTO> vendas = repo.vendasDoProduto(id);
+    if(!vendas.isEmpty()){
+        return {false, ProdutoErro::EmUso,
+                QString("Este produto está em %1 venda(s) e não pode ser apagado.").arg(vendas.size())};
+    }
 
     if(!repo.deletar(id, errosql)){
         return {false, ProdutoErro::ErroBanco, errosql};

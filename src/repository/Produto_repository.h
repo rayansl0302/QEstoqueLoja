@@ -1,6 +1,8 @@
 #ifndef PRODUTO_REPOSITORY_H
 #define PRODUTO_REPOSITORY_H
 
+#include "../dto/ProdutoVendaRef_dto.h"
+#include <QList>
 #include <QSqlDatabase>
 #include <QSqlQueryModel>
 #include <QVariantMap>
@@ -16,6 +18,8 @@ public:
     bool inserir(const ProdutoDTO &p, QString &erroSQL);
     QSqlQueryModel *getProdutoPeloCodigo(const QString &codigoBarras);
     bool deletar(const QString &id, QString &erroSQL);
+    // vendas em que o produto foi vendido (mais recentes primeiro)
+    QList<ProdutoVendaRefDTO> vendasDoProduto(const QString &id);
     bool alterar(const ProdutoDTO &p, const QString &id, QString &erro);
     QStringList listarLocais();
     bool atualizarLocal(int id, const QString &local, QString &erroSQL);

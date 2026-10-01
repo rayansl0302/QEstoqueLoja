@@ -40,7 +40,8 @@ void ProdutoTableView::configurar()
     model->setHeaderData(5, Qt::Horizontal, tr("NF"));
 
     setModel(model);
-    horizontalHeader()->setStyleSheet("QHeaderView::section { background-color: rgb(33, 105, 149); }");
+    horizontalHeader()->setStyleSheet("QHeaderView::section { background-color: #eaf0f7; color: #1e3a5f; font-weight: 700; "
+                                      "border: none; border-right: 1px solid #d5dee9; border-bottom: 2px solid #2b84bf; padding: 6px 8px; }");
     DelegatePrecoF2 *delegatePreco = new DelegatePrecoF2(this);
     setItemDelegateForColumn(3, delegatePreco);
 

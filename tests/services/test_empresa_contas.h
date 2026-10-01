@@ -19,6 +19,7 @@ private slots:
     void venda_grava_a_empresa_ativa();
     void relatorios_e_lista_de_vendas_filtram_pela_empresa();
 
+    void produto_vendido_nao_e_apagado_e_lista_as_vendas();
     void dividir_valor_soma_exata();
     void lancar_parcelado_gera_vencimentos_mensais_sem_deriva();
     void lancar_valida_campos();
