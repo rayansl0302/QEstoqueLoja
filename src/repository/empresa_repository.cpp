@@ -116,6 +116,16 @@ bool Empresa_repository::atualizar(const EmpresaDTO &empresa, QString *erro)
     return true;
 }
 
+int Empresa_repository::quantidadeDeVendas(qlonglong id)
+{
+    if (!DatabaseConnection_service::open())
+        return 0;
+    QSqlQuery q(db);
+    q.prepare("SELECT COUNT(*) FROM vendas2 WHERE id_empresa = :id");
+    q.bindValue(":id", id);
+    return (q.exec() && q.next()) ? q.value(0).toInt() : 0;
+}
+
 bool Empresa_repository::definirAtiva(qlonglong id, bool ativa, QString *erro)
 {
     if (!DatabaseConnection_service::open()) {

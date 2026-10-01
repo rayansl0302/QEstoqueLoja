@@ -133,6 +133,54 @@ Empresa_service::Resultado Empresa_service::renomear(qlonglong id, const QString
     return {true, "Nome atualizado.", id};
 }
 
+Empresa_service::Resultado Empresa_service::atualizar(qlonglong id, const QString &apelido, const QString &cnpj,
+                                                      const QString &razaoSocial)
+{
+    EmpresaDTO e = repo.getPorId(id);
+    if (!e.valida())
+        return {false, "Empresa não encontrada."};
+    const QString nome = apelido.trimmed();
+    const QString digitos = somenteDigitos(cnpj);
+    if (nome.size() < 2)
+        return {false, "Informe o nome da empresa (mínimo 2 letras)."};
+    if (digitos.isEmpty() && !e.cnpj.isEmpty())
+        return {false, "O CNPJ não pode ser apagado. Corrija-o ou deixe como está."};
+    if (!digitos.isEmpty() && !cnpjValido(digitos))
+        return {false, "CNPJ inválido. Confira os 14 dígitos."};
+    if (!digitos.isEmpty()) {
+        const EmpresaDTO outra = repo.getPorCnpj(digitos);
+        if (outra.valida() && outra.id != id)
+            return {false, QString("Este CNPJ já está cadastrado na empresa %1.").arg(outra.apelido)};
+    }
+    for (const EmpresaDTO &o : repo.listar(false))
+        if (o.id != id && o.apelido.compare(nome, Qt::CaseInsensitive) == 0)
+            return {false, "Já existe outra empresa com este nome."};
+
+    e.apelido = nome;
+    e.cnpj = digitos;
+    e.razaoSocial = razaoSocial.trimmed();
+    QString erro;
+    if (!repo.atualizar(e, &erro))
+        return {false, "Não foi possível salvar: " + erro};
+
+    // a nota usa o nome e o CNPJ da configuração fiscal dessa empresa: mantém os dois iguais
+    QSettings s(AppPath_service::configPath(), QSettings::IniFormat);
+    const QString prefixo = id <= 1 ? QString() : QStringLiteral("empresa_%1/").arg(id);
+    if (!digitos.isEmpty())
+        s.setValue(prefixo + "empresa/cnpj_empresa", digitos);
+    if (!e.razaoSocial.isEmpty())
+        s.setValue(prefixo + "empresa/nome_empresa", e.razaoSocial);
+    s.sync();
+    if (id == EmpresaAtiva::id())
+        emit empresaMudou(id);          // recarrega rodapé, logo e configuração
+    return {true, "Empresa atualizada.", id};
+}
+
+int Empresa_service::quantidadeDeVendas(qlonglong id)
+{
+    return repo.quantidadeDeVendas(id);
+}
+
 Empresa_service::Resultado Empresa_service::definirAtivaNoCadastro(qlonglong id, bool ativa)
 {
     if (!ativa) {

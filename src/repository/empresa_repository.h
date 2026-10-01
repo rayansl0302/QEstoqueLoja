@@ -19,6 +19,7 @@ public:
     qlonglong inserir(const EmpresaDTO &empresa, QString *erro = nullptr);
     bool atualizar(const EmpresaDTO &empresa, QString *erro = nullptr);
     bool definirAtiva(qlonglong id, bool ativa, QString *erro = nullptr);
+    int quantidadeDeVendas(qlonglong id);
 
 private:
     QSqlDatabase db;

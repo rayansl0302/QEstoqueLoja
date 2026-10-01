@@ -24,6 +24,8 @@ public:
     bool estornarBaixa(qlonglong id, QString *erro = nullptr);
     bool cancelar(qlonglong id, const QString &motivo, QString *erro = nullptr);
     bool atualizarAberta(const ContaPagarDTO &conta, QString *erro = nullptr);
+    // descrição, fornecedor, categoria, documento e observação: vale para conta aberta ou paga
+    bool atualizarTextos(const ContaPagarDTO &conta, QString *erro = nullptr);
 
     ResumoContasPagarDTO resumo(qlonglong idEmpresa, const QString &hoje);
 

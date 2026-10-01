@@ -337,7 +337,7 @@ void ContasPagarJanela::atualizarBotoes()
 {
     const ContaPagarDTO c = selecionada();
     btnBaixar->setEnabled(c.id > 0 && c.aberta());
-    btnEditar->setEnabled(c.id > 0 && c.aberta());
+    btnEditar->setEnabled(c.id > 0 && c.status != kContaCancelada);
     btnCancelar->setEnabled(c.id > 0 && c.aberta());
     btnEstornar->setEnabled(c.id > 0 && c.status == kContaPaga);
 }
@@ -358,7 +358,7 @@ void ContasPagarJanela::novaConta()
 void ContasPagarJanela::editar()
 {
     const ContaPagarDTO c = selecionada();
-    if (c.id <= 0 || !c.aberta())
+    if (c.id <= 0 || c.status == kContaCancelada)
         return;
     NovaContaDialog dlg(c, this);
     while (dlg.exec() == QDialog::Accepted) {

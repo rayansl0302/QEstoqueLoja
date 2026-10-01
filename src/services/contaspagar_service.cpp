@@ -116,14 +116,30 @@ ContasPagar_service::Resultado ContasPagar_service::alterar(const ContaPagarDTO 
 {
     if (conta.descricao.trimmed().size() < 2)
         return {false, "Informe a descrição da conta."};
+    const ContaPagarDTO atual = repo.getPorId(conta.id);
+    if (atual.id <= 0)
+        return {false, "Conta não encontrada."};
+
+    ContaPagarDTO c = conta;
+    c.descricao = conta.descricao.trimmed();
+    c.fornecedor = conta.fornecedor.trimmed();
+    c.categoria = conta.categoria.trimmed();
+    c.documento = conta.documento.trimmed();
+    c.observacao = conta.observacao.trimmed();
+    QString erro;
+
+    if (atual.status == kContaPaga) {
+        // conta paga: só os textos (corrigir descrição, fornecedor...). Valor e vencimento mudam
+        // estornando o pagamento antes.
+        if (!repo.atualizarTextos(c, &erro))
+            return {false, erro};
+        return {true, "Conta atualizada.", c.id, 1};
+    }
     if (conta.valor <= 0)
         return {false, "Informe um valor maior que zero."};
     if (!QDate::fromString(conta.vencimento, Qt::ISODate).isValid())
         return {false, "Informe um vencimento válido."};
-    ContaPagarDTO c = conta;
-    c.descricao = conta.descricao.trimmed();
     c.valor = arredondar2(conta.valor);
-    QString erro;
     if (!repo.atualizarAberta(c, &erro))
         return {false, erro};
     return {true, "Conta atualizada.", c.id, 1};

@@ -82,6 +82,13 @@ NovaContaDialog::NovaContaDialog(const ContaPagarDTO &conta, QWidget *parent)
         spParcelas->setEnabled(false);
         cbPeriodicidade->setEnabled(false);
     }
+    if (conta.status == kContaPaga) {
+        // conta paga: valor e vencimento só mudam estornando o pagamento
+        spValor->setEnabled(false);
+        dtVencimento->setEnabled(false);
+        spValor->setToolTip("Para mudar o valor ou o vencimento, estorne o pagamento antes.");
+        dtVencimento->setToolTip("Para mudar o valor ou o vencimento, estorne o pagamento antes.");
+    }
 
     edObservacao = new QPlainTextEdit(conta.observacao);
     edObservacao->setMaximumHeight(64);

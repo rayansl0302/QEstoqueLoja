@@ -36,6 +36,11 @@ public:
     // com a empresa ativa. Começa SEM emissão de nota ligada.
     Resultado cadastrar(const QString &apelido, const QString &cnpj, const QString &razaoSocial = QString());
     Resultado renomear(qlonglong id, const QString &apelido);
+    // Corrige nome, CNPJ e razão social (erro de digitação). O CNPJ pode ficar vazio só se já estava vazio.
+    // Também acompanha o que a configuração fiscal dessa empresa guarda (nome/CNPJ da nota).
+    Resultado atualizar(qlonglong id, const QString &apelido, const QString &cnpj, const QString &razaoSocial);
+    // vendas já feitas nessa empresa: mexer no CNPJ não muda notas já emitidas
+    int quantidadeDeVendas(qlonglong id);
     Resultado definirAtivaNoCadastro(qlonglong id, bool ativa);
 
     // Troca a empresa em uso. Recusa se houver venda em andamento ou empresa inválida/inativa.

@@ -13,6 +13,7 @@ private slots:
 
     void cnpj_valida_digitos_verificadores();
     void cadastrar_empresa_valida_nome_cnpj_e_duplicidade();
+    void editar_empresa_corrige_nome_cnpj_e_valida_duplicidade();
     void troca_de_empresa_recusa_com_venda_em_andamento();
     void configuracao_fiscal_e_separada_por_empresa();
     void venda_grava_a_empresa_ativa();

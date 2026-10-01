@@ -6,6 +6,7 @@
 #include <functional>
 #include "dto/Empresa_dto.h"
 
+class QCheckBox;
 class QGridLayout;
 class QLabel;
 class QToolButton;
@@ -33,6 +34,8 @@ private:
     QLabel *lblAviso = nullptr;
     QPushButton *btnUsar = nullptr;
     QPushButton *btnDesativar = nullptr;
+    QPushButton *btnEditar = nullptr;
+    QCheckBox *chInativas = nullptr;
     qlonglong idSelecionada = 0;
     qlonglong idEscolhida = 0;
 
@@ -41,6 +44,7 @@ private:
     void usarSelecionada();
     void cadastrarNova();
     void desativarSelecionada();
+    void editarSelecionada();
 };
 
 #endif // EMPRESADIALOG_H

@@ -10,7 +10,9 @@ venda, conta a pagar e emissão fiscal feita enquanto ela estiver ativa pertence
 - Se houver mais de uma empresa ativa, o programa pergunta **com qual vai trabalhar** logo depois do login (uma vez
   por abertura). A última escolha fica guardada em `geral/empresa_ativa` do `config.ini`.
 - A troca é recusada com **venda em andamento**. Ao trocar, recarrega configuração, certificado (ACBr), logo e alertas.
-- Cadastrar e desativar empresa: só gerente. O cadastro pede nome e CNPJ (com dígitos verificadores); o resto
+- Cadastrar, **editar** (nome, CNPJ, razão social), desativar e reativar empresa: só gerente. Editar corrige também o
+  nome/CNPJ da configuração fiscal da empresa; se ela já vendeu, o programa avisa que notas já emitidas não mudam.
+  Para reativar, marque "Mostrar empresas desativadas". O cadastro pede nome e CNPJ (com dígitos verificadores); o resto
   (endereço, certificado, CSC, numeração de NF) é preenchido em **Configurações** com a empresa ativa
   (a janela mostra o nome da empresa no título). Empresa nova começa **sem emissão de nota ligada**.
 
@@ -42,7 +44,8 @@ contas **vencidas** ou **vencendo hoje** da empresa em uso.
   mensal, quinzenal ou semanal) o valor é dividido com os centavos que sobram na última parcela, e os vencimentos
   partem sempre do primeiro (31/01 → 28/02 → 31/03, sem deriva).
 - **Baixar (pagar)** com valor realmente pago (juros/desconto), forma e data. Não baixa duas vezes.
-- **Editar** só conta em aberto. **Estornar pagamento** e **cancelar conta** (com motivo): só gerente, também no
+- **Editar**: conta em aberto muda tudo; conta **paga** só os textos (descrição, fornecedor, categoria, documento,
+  observação) — valor e vencimento exigem estornar o pagamento antes; cancelada não muda. **Estornar pagamento** e **cancelar conta** (com motivo): só gerente, também no
   serviço, e ficam no **log de acesso** (`CONTA_PAGAR_BAIXA`, `CONTA_PAGAR_ESTORNO`, `CONTA_PAGAR_CANCELAMENTO`).
 - Resumo em cartões (vencidas, hoje, próximos 7 dias, total em aberto) que também funcionam como filtro; filtros por
   empresa, situação, busca e período de vencimento.

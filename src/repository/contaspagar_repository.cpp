@@ -267,6 +267,32 @@ bool ContasPagar_repository::atualizarAberta(const ContaPagarDTO &c, QString *er
     return true;
 }
 
+bool ContasPagar_repository::atualizarTextos(const ContaPagarDTO &c, QString *erro)
+{
+    if (!DatabaseConnection_service::open()) {
+        setErro(erro, "Banco de dados indisponível.");
+        return false;
+    }
+    QSqlQuery q(db);
+    q.prepare("UPDATE contas_pagar SET descricao = :desc, fornecedor = :forn, categoria = :cat, documento = :doc, "
+              "observacao = :obs WHERE id = :id AND status <> 'CANCELADA'");
+    q.bindValue(":desc", c.descricao);
+    q.bindValue(":forn", c.fornecedor);
+    q.bindValue(":cat", c.categoria);
+    q.bindValue(":doc", c.documento);
+    q.bindValue(":obs", c.observacao);
+    q.bindValue(":id", c.id);
+    if (!q.exec()) {
+        setErro(erro, q.lastError().text());
+        return false;
+    }
+    if (q.numRowsAffected() != 1) {
+        setErro(erro, "Conta cancelada não pode ser alterada.");
+        return false;
+    }
+    return true;
+}
+
 ResumoContasPagarDTO ContasPagar_repository::resumo(qlonglong idEmpresa, const QString &hoje)
 {
     ResumoContasPagarDTO r;

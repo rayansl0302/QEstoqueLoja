@@ -232,6 +232,49 @@ void TestEmpresaContas::relatorios_e_lista_de_vendas_filtram_pela_empresa()
     QCOMPARE(modelo.rowCount(), 1);
 }
 
+void TestEmpresaContas::editar_empresa_corrige_nome_cnpj_e_valida_duplicidade()
+{
+    auto *es = Empresa_service::instancia();
+    const QString sufixo = QUuid::createUuid().toString(QUuid::Id128).left(6);
+    const QString cnpjA = cnpjDeTeste(QRandomGenerator::global()->bounded(1000, 40000000));
+    const QString cnpjB = cnpjDeTeste(QRandomGenerator::global()->bounded(40000001, 80000000));
+    const auto a = es->cadastrar("Edita A " + sufixo, cnpjA);
+    const auto b = es->cadastrar("Edita B " + sufixo, cnpjB);
+    QVERIFY(a.ok && b.ok);
+
+    QVERIFY(!es->atualizar(a.id, "X", cnpjA, "").ok);                       // nome curto
+    QVERIFY(!es->atualizar(a.id, "Edita A " + sufixo, "123", "").ok);       // CNPJ inválido
+    QVERIFY(!es->atualizar(a.id, "Edita A " + sufixo, "", "").ok);          // não apaga o CNPJ
+    QVERIFY(!es->atualizar(a.id, "Edita A " + sufixo, cnpjB, "").ok);       // CNPJ de outra empresa
+    QVERIFY(!es->atualizar(a.id, "edita b " + sufixo, cnpjA, "").ok);       // nome de outra empresa
+    QVERIFY(!es->atualizar(99999999, "Qualquer", cnpjA, "").ok);
+
+    // corrigir o próprio cadastro (mesmo nome/CNPJ dela não conta como duplicado)
+    const QString novoCnpj = cnpjDeTeste(QRandomGenerator::global()->bounded(1000, 40000000) + 5);
+    QSignalSpy spy(es, &Empresa_service::empresaMudou);
+    const auto ok = es->atualizar(a.id, "Edita A Certo " + sufixo, novoCnpj, "Edita A LTDA");
+    QVERIFY2(ok.ok, qPrintable(ok.msg));
+    const EmpresaDTO depois = es->getPorId(a.id);
+    QCOMPARE(depois.apelido, "Edita A Certo " + sufixo);
+    QCOMPARE(depois.cnpj, novoCnpj);
+    QCOMPARE(depois.razaoSocial, QStringLiteral("Edita A LTDA"));
+    QCOMPARE(spy.count(), 0);                      // não é a empresa em uso: nada a recarregar
+
+    // a configuração fiscal da empresa acompanha o nome/CNPJ corrigidos
+    QVERIFY(es->trocarPara(a.id).ok);
+    Config_service cs;
+    const ConfigDTO cfg = cs.carregarTudo();
+    QCOMPARE(cfg.cnpjEmpresa, novoCnpj);
+    QCOMPARE(cfg.nomeEmpresa, QStringLiteral("Edita A LTDA"));
+    QVERIFY(es->trocarPara(1).ok);
+
+    // reativar empresa desativada
+    QVERIFY(es->definirAtivaNoCadastro(b.id, false).ok);
+    QVERIFY(es->definirAtivaNoCadastro(b.id, true).ok);
+    QVERIFY(es->getPorId(b.id).ativa);
+    QCOMPARE(es->quantidadeDeVendas(b.id), 0);
+}
+
 void TestEmpresaContas::dividir_valor_soma_exata()
 {
     const QList<double> v = ContasPagar_service::dividirValor(100.0, 3);
@@ -325,7 +368,19 @@ void TestEmpresaContas::baixar_estornar_e_cancelar_seguem_as_regras()
     QVERIFY(!paga.pagoEm.isEmpty());
     QVERIFY(!cs.baixar(lanc.id, 200, "Pix").ok);           // não baixa duas vezes
     QVERIFY(!cs.cancelar(lanc.id, "motivo qualquer").ok);  // paga não cancela
-    QVERIFY(!cs.alterar(paga).ok);                         // paga não altera
+    // conta paga: corrige só os textos; valor e vencimento ficam como estão
+    ContaPagarDTO corrigida = paga;
+    corrigida.descricao = c.descricao + " (corrigida)";
+    corrigida.fornecedor = "Fornecedor certo";
+    corrigida.valor = 1;
+    corrigida.vencimento = "2020-01-01";
+    QVERIFY(cs.alterar(corrigida).ok);
+    const ContaPagarDTO depois = cs.getConta(lanc.id);
+    QCOMPARE(depois.descricao, c.descricao + " (corrigida)");
+    QCOMPARE(depois.fornecedor, QStringLiteral("Fornecedor certo"));
+    QCOMPARE(depois.valor, 200.0);
+    QCOMPARE(depois.vencimento, c.vencimento);
+    paga = depois;
 
     // só gerente estorna
     bool gerente = false;
@@ -346,6 +401,7 @@ void TestEmpresaContas::baixar_estornar_e_cancelar_seguem_as_regras()
     QVERIFY(cs.cancelar(lanc.id, "lançada em duplicidade").ok);
     QCOMPARE(cs.getConta(lanc.id).status, QStringLiteral("CANCELADA"));
     QVERIFY(!cs.baixar(lanc.id, 200, "Pix").ok);           // cancelada não baixa
+    QVERIFY(!cs.alterar(cs.getConta(lanc.id)).ok);         // nem altera
 
     // alterar conta em aberto
     const auto outra = cs.lancar(c);
