@@ -325,6 +325,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/aberturacaixa.h src/aberturacaixa.cpp src/aberturacaixa.ui
         src/operadores.h src/operadores.cpp src/operadores.ui
         src/logacessodialog.h src/logacessodialog.cpp
+        src/menuinicial.h src/menuinicial.cpp
         src/movimentacaocaixa.h src/movimentacaocaixa.cpp src/movimentacaocaixa.ui
         src/fechamentocaixa.h src/fechamentocaixa.cpp src/fechamentocaixa.ui
         src/historicocaixas.h src/historicocaixas.cpp src/historicocaixas.ui

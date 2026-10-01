@@ -32,7 +32,9 @@
 #define VERSAO_QE "2.10.0"
 
 QT_BEGIN_NAMESPACE
-namespace Ui { class MainWindow; }
+class MenuInicial;
+namespace Ui {
+class MainWindow; }
 QT_END_NAMESPACE
 
 class venda;
@@ -124,6 +126,13 @@ private slots:
     void sangriaClicked();
     void suprimentoClicked();
     void historicoCaixaClicked();
+    // tela inicial (menu de botões) x lista de produtos
+    void montarMenuInicial();
+    void irParaInicio();
+    void irParaProdutos();
+    bool naListaDeProdutos() const;
+    void atualizarSaudacao();
+    void atualizarLogoCabecalho();
     void operadoresClicked();
     void trocarOperadorClicked();
     void sairSessaoClicked();
@@ -186,6 +195,7 @@ private:
     QToolButton *btnOperador = nullptr;   // chip do operador logado (menu: trocar / sair)
     QToolButton *btnSair = nullptr;       // "Sair da conta", sempre à vista
     QLabel *lblAvisoTimeout = nullptr;
+    MenuInicial *menuInicial = nullptr;
     QAction *actionTrocarOperador = nullptr;
     QAction *actionSairSessao = nullptr;
     bool modoDesenvolvimento = false;

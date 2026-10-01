@@ -60,6 +60,11 @@
 #include "operadores.h"
 #include "loginoperador.h"
 #include "logacessodialog.h"
+#include "menuinicial.h"
+#include <QStackedWidget>
+#include <QStandardPaths>
+#include <QFileInfo>
+#include <QPixmap>
 #include <QCloseEvent>
 #include "services/sessao_service.h"
 #include <QInputDialog>
@@ -173,6 +178,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     montarMenuCaixa();
     atualizarIndicadorCaixa();
+    montarMenuInicial();
+    atualizarLogoCabecalho();
 
     Sessao_service *sessao = Sessao_service::instancia();
     connect(sessao, &Sessao_service::sessaoExpirada, this, &MainWindow::sessaoExpirada);
@@ -264,6 +271,10 @@ void MainWindow::atualizarTableview()
 
 void MainWindow::on_Btn_Delete_clicked()
 {
+    if (!naListaDeProdutos()) {
+        irParaProdutos();       // precisa da lista para saber qual produto
+        return;
+    }
     if(ui->Tview_Produtos->selectionModel()->isSelected(ui->Tview_Produtos->currentIndex())){
     // obter id selecionado
     QItemSelectionModel *selectionModel = ui->Tview_Produtos->selectionModel();
@@ -316,6 +327,10 @@ void MainWindow::on_Btn_Pesquisa_clicked()
 
 void MainWindow::on_Btn_Alterar_clicked()
 {
+    if (!naListaDeProdutos()) {
+        irParaProdutos();
+        return;
+    }
 
 
     if(ui->Tview_Produtos->selectionModel()->isSelected(ui->Tview_Produtos->currentIndex())){
@@ -463,6 +478,118 @@ void MainWindow::on_actionRealizar_Venda_triggered()
 void MainWindow::on_Btn_PDV_clicked()
 {
     abrirPdv();
+}
+
+bool MainWindow::naListaDeProdutos() const
+{
+    return ui->pilhaPrincipal->currentWidget() == ui->paginaProdutos;
+}
+
+void MainWindow::irParaInicio()
+{
+    ui->pilhaPrincipal->setCurrentWidget(ui->paginaMenu);
+}
+
+void MainWindow::irParaProdutos()
+{
+    ui->pilhaPrincipal->setCurrentWidget(ui->paginaProdutos);
+    ui->Ledit_Pesquisa->setFocus();
+}
+
+void MainWindow::atualizarLogoCabecalho()
+{
+    // a logo cadastrada em Configurações > Empresa; sem ela (ou sem o arquivo) fica a do programa
+    const QString arquivo = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
+                            "/imagens/" + QFileInfo(configDTO.logoPathEmpresa).fileName();
+    QPixmap logo;
+    if (!configDTO.logoPathEmpresa.trimmed().isEmpty() && QFile::exists(arquivo))
+        logo.load(arquivo);
+    // a logo do programa é clara (feita para o fundo escuro); a da empresa vai sobre um fundo branco
+    const bool logoDaEmpresa = !logo.isNull();
+    if (logo.isNull())
+        logo.load(QStringLiteral(":/QEstoqueLOja/logo-completo-claro.png"));
+    if (logo.isNull())
+        return;
+
+    ui->label_6->setStyleSheet(logoDaEmpresa
+        ? QStringLiteral("background: white; border-radius: 6px; border: 2px solid rgba(43, 132, 191, 180);")
+        : QStringLiteral("border-right: 2px solid rgba(43, 132, 191, 180);"));
+    ui->label_6->setScaledContents(false);
+    ui->label_6->setAlignment(Qt::AlignCenter);
+    ui->label_6->setMargin(3);
+    ui->label_6->setCursor(Qt::PointingHandCursor);
+    ui->label_6->setToolTip(QStringLiteral("Voltar ao menu inicial"));
+    ui->label_6->installEventFilter(this);
+    ui->label_6->setPixmap(logo.scaled(ui->label_6->maximumSize() - QSize(8, 8), Qt::KeepAspectRatio,
+                                       Qt::SmoothTransformation));
+}
+
+void MainWindow::atualizarSaudacao()
+{
+    if (!menuInicial)
+        return;
+    const QString nome = Sessao_service::instancia()->nomeOperador();
+    const QString empresa = configDTO.nomeFantasiaEmpresa.trimmed().isEmpty()
+                                ? configDTO.nomeEmpresa.trimmed() : configDTO.nomeFantasiaEmpresa.trimmed();
+    const QString data = QLocale(QLocale::Portuguese, QLocale::Brazil)
+                             .toString(QDate::currentDate(), QStringLiteral("dddd, d 'de' MMMM 'de' yyyy"));
+    menuInicial->definirSaudacao(nome.isEmpty() ? QStringLiteral("Bem-vindo")
+                                                : QStringLiteral("Olá, %1").arg(nome),
+                                 empresa.isEmpty() ? data : QStringLiteral("%1  ·  %2").arg(empresa, data));
+}
+
+void MainWindow::montarMenuInicial()
+{
+    menuInicial = new MenuInicial(ui->paginaMenu);
+    auto *layout = new QVBoxLayout(ui->paginaMenu);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->addWidget(menuInicial);
+
+    auto *m = menuInicial;
+    m->adicionarGrupo("Atendimento");
+    m->adicionarBotao("🛒", "Vender (PDV)", "Abre a tela de venda (F5)", [this]() { abrirPdv(); }, true);
+    m->adicionarBotao("🧾", "Vendas", "Consultar e gerenciar vendas", [this]() { ui->Btn_Venda->click(); });
+    m->adicionarBotao("📝", "Orçamentos", "Criar e consultar orçamentos", [this]() { ui->Btn_Orcamento->click(); });
+
+    m->adicionarGrupo("Cadastros");
+    m->adicionarBotao("📦", "Produtos", "Lista de produtos e estoque", [this]() { irParaProdutos(); });
+    m->adicionarBotao("➕", "Cadastrar produto", "Adicionar um novo produto", [this]() { ui->Btn_AddProd->click(); });
+    m->adicionarBotao("👥", "Clientes", "Cadastro de clientes", [this]() { ui->Btn_Clientes->click(); });
+    m->adicionarBotao("📥", "Compras", "Entrada de mercadorias", [this]() { ui->Btn_Entradas->click(); });
+
+    m->adicionarGrupo("Caixa");
+    m->adicionarBotao("💰", "Abrir caixa", "Abrir o seu caixa", [this]() { abrirCaixaClicked(); });
+    m->adicionarBotao("🔒", "Fechar caixa", "Conferir e fechar o seu caixa", [this]() { fecharCaixaClicked(); });
+    m->adicionarBotao("⬇️", "Sangria", "Retirar dinheiro do caixa", [this]() { sangriaClicked(); });
+    m->adicionarBotao("⬆️", "Suprimento", "Colocar dinheiro no caixa", [this]() { suprimentoClicked(); });
+    m->adicionarBotao("🗂️", "Histórico de caixas", "Caixas abertos e fechados", [this]() { historicoCaixaClicked(); });
+
+    m->adicionarGrupo("Gestão e fiscal");
+    m->adicionarBotao("📊", "Relatórios", "Relatórios gerenciais", [this]() { ui->Btn_Relatorios->click(); });
+    m->adicionarBotao("🧑‍💼", "Operadores", "Cadastro de operadores de caixa", [this]() { operadoresClicked(); });
+    m->adicionarBotao("🛡️", "Log de acesso", "Quem entrou e o que fez", [this]() { logAcessoClicked(); });
+    m->adicionarBotao("🧮", "Monitor fiscal", "Notas fiscais e contingência", [this]() { ui->actionMonitor_Fiscal->trigger(); });
+    m->adicionarBotao("✉️", "Enviar ao contador", "Enviar as notas ao contador", [this]() { ui->actionEnviar_Notas_Contador->trigger(); });
+
+    m->adicionarGrupo("Sistema");
+    m->adicionarBotao("⚙️", "Configurações", "Empresa, fiscal, e-mail e outros", [this]() { ui->actionConfig->trigger(); });
+    m->adicionarBotao("📖", "Ajuda", "Documentação do sistema", [this]() { ui->actionDocumenta_o->trigger(); });
+    m->adicionarBotao("🚪", "Sair da conta", "Encerrar a sessão do operador", [this]() { sairSessaoClicked(); });
+
+    // na lista de produtos: botão para voltar ao menu
+    auto *btnInicio = new QPushButton(QStringLiteral("⬅  Início"), ui->paginaProdutos);
+    btnInicio->setCursor(Qt::PointingHandCursor);
+    btnInicio->setToolTip("Voltar ao menu inicial");
+    btnInicio->setStyleSheet("QPushButton { background: white; color: #1E3A5F; border: 1px solid #C9D3DF;"
+                             " border-radius: 8px; padding: 6px 14px; font-weight: 700; }"
+                             "QPushButton:hover { background: #EAF3FB; border-color: #2B84BF; }");
+    connect(btnInicio, &QPushButton::clicked, this, &MainWindow::irParaInicio);
+    ui->horizontalLayout_6->insertWidget(0, btnInicio);
+    ui->horizontalLayout_6->insertSpacing(1, 8);
+
+    connect(Sessao_service::instancia(), &Sessao_service::sessaoMudou, this, &MainWindow::atualizarSaudacao);
+    atualizarSaudacao();
+    irParaInicio();
 }
 
 void MainWindow::montarMenuCaixa()
@@ -940,6 +1067,12 @@ void MainWindow::on_Btn_AddProd_clicked()
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 {
+    // clicar na logo volta para o menu inicial
+    if (obj == ui->label_6 && event->type() == QEvent::MouseButtonRelease) {
+        irParaInicio();
+        return true;
+    }
+
     // Verificar se o evento é uma tecla pressionada no lineEdit
     if (obj == ui->Ledit_Pesquisa && event->type() == QEvent::KeyPress)
     {
@@ -999,6 +1132,8 @@ void MainWindow::on_actionConfig_triggered()
 }
 void MainWindow::atualizarConfigDTO(){
     configDTO = confServ->carregarTudo();
+    atualizarLogoCabecalho();
+    atualizarSaudacao();
 }
 
 void MainWindow::on_Ledit_Pesquisa_textChanged(const QString &arg1)
