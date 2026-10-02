@@ -38,6 +38,11 @@ public:
 
     // Chamados pelos fluxos de venda
     Resultado exigirCaixaAberto();
+    // recebimento de dívida lançada à mão (contas a receber): entra no caixa aberto de quem está logado
+    Resultado registrarRecebimentoDivida(qlonglong idDivida, qlonglong idPagamento, const QString &forma,
+                                         double valor, const QString &descricao);
+    Resultado podeEstornarRecebimentoDivida(qlonglong idPagamento);
+    Resultado estornarRecebimentoDivida(qlonglong idPagamento);
     Resultado registrarRecebimento(qlonglong idVenda, qlonglong idEntradaVenda,
                                    const QString &forma, double valor);
     // Confere (sem apagar) se o recebimento ainda pode ser excluído: o caixa dele precisa estar aberto.

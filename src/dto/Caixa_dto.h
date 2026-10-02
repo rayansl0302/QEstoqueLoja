@@ -33,6 +33,7 @@ struct MovimentacaoCaixaDTO {
     QString motivo;
     qlonglong idVenda = 0;
     qlonglong idEntradaVenda = 0;
+    qlonglong idPagamentoDivida = 0;     // recebimento de dívida manual (contas a receber)
     qlonglong idOperador = 0;            // dono do caixa (quem abriu)
     // -1 = ainda não registrado (NULL no banco); 0 = entrada pelo PIN geral do gerente
     qlonglong idOperadorSessao = -1;     // quem estava logado quando a movimentação aconteceu

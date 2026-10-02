@@ -20,6 +20,9 @@ public:
     // Pede o PIN do gerente (define na primeira vez). O cadastro de operadores só abre com ele,
     // para que um operador não consiga redefinir ou desbloquear o PIN de outro.
     static bool autenticarGerente(QWidget *parent);
+    // Libera a ação de gerente: gerente logado passa direto; operador comum digita o PIN do gerente
+    // (fica elevado por um tempo, com registro). false = negado ou cancelado.
+    static bool exigirGerente(QWidget *parent, const QString &acao);
     static void alterarPinGerente(QWidget *parent);
 
 private slots:

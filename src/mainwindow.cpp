@@ -65,6 +65,7 @@
 #include "empresadialog.h"
 #include "produtoemvendasdialog.h"
 #include "contaspagarjanela.h"
+#include "contasreceberjanela.h"
 #include "services/empresa_service.h"
 #include "services/contaspagar_service.h"
 #include <QStackedWidget>
@@ -591,6 +592,8 @@ void MainWindow::montarMenuInicial()
     m->adicionarBotao("banknote", "Contas a pagar", "Contas, vencimentos e baixas", [this]() { contasPagarClicked(); });
     m->adicionarBotao("plus", "Nova conta a pagar", "Lançar uma conta ou compra parcelada",
                       [this]() { contasPagarClicked(QStringLiteral("NOVA")); });
+    m->adicionarBotao("wallet", "Contas a receber", "Fiado e caderneta: o que os clientes devem",
+                      [this]() { contasReceberClicked(); });
     m->adicionarBotao("building-2", "Trocar empresa", "Escolher o CNPJ das vendas e notas", [this]() { escolherEmpresaClicked(); });
 
     m->adicionarGrupo("Gestão e fiscal");
@@ -678,6 +681,12 @@ void MainWindow::contasPagarClicked(const QString &statusInicial)
     atualizarAlertaContas();
 }
 
+void MainWindow::contasReceberClicked(qlonglong idCliente)
+{
+    ContasReceberJanela janela([this](const QString &acao) { return exigirGerente(acao); }, idCliente, this);
+    janela.exec();
+}
+
 void MainWindow::atualizarAlertaContas()
 {
     if (!menuInicial)
@@ -719,6 +728,8 @@ void MainWindow::montarMenuCaixa()
     QMenu *menuFinanceiro = new QMenu("Financeiro", this);
     menuFinanceiro->addAction("Contas a pagar...", this, [this]() { contasPagarClicked(); });
     menuFinanceiro->addAction("Nova conta a pagar...", this, [this]() { contasPagarClicked(QStringLiteral("NOVA")); });
+    menuFinanceiro->addSeparator();
+    menuFinanceiro->addAction("Contas a receber (fiado)...", this, [this]() { contasReceberClicked(); });
     menuFinanceiro->addSeparator();
     menuFinanceiro->addAction("Trocar empresa...", this, &MainWindow::escolherEmpresaClicked);
     ui->menuBar->insertMenu(ui->menuAjuda->menuAction(), menuFinanceiro);

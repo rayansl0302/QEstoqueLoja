@@ -115,6 +115,7 @@ set(QESTOQUE_SOURCES
     src/services/escposprinter_service.cpp
     src/services/sessao_service.cpp
     src/services/empresa_service.cpp
+    src/services/contasreceber_service.cpp
     src/services/contaspagar_service.cpp
 
 
@@ -132,6 +133,7 @@ set(QESTOQUE_SOURCES
     src/repository/entradasvendas_repository.cpp
     src/repository/sessao_repository.cpp
     src/repository/empresa_repository.cpp
+    src/repository/contasreceber_repository.cpp
     src/repository/relatorios_repository.cpp
     src/repository/contaspagar_repository.cpp
 
@@ -322,10 +324,12 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/repository/operador_repository.h src/repository/operador_repository.cpp
         src/repository/sessao_repository.h src/repository/sessao_repository.cpp
         src/repository/empresa_repository.h src/repository/empresa_repository.cpp
+        src/repository/contasreceber_repository.h src/repository/contasreceber_repository.cpp
         src/repository/contaspagar_repository.h src/repository/contaspagar_repository.cpp
         src/services/operador_service.h src/services/operador_service.cpp
         src/services/sessao_service.h src/services/sessao_service.cpp
         src/services/empresa_service.h src/services/empresa_service.cpp
+        src/services/contasreceber_service.h src/services/contasreceber_service.cpp
         src/services/contaspagar_service.h src/services/contaspagar_service.cpp
         src/loginoperador.h src/loginoperador.cpp src/loginoperador.ui
         src/dto/Caixa_dto.h
@@ -338,6 +342,9 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/menuinicial.h src/menuinicial.cpp
         src/empresadialog.h src/empresadialog.cpp
         src/produtoemvendasdialog.h src/produtoemvendasdialog.cpp
+        src/contareceberdialogs.h src/contareceberdialogs.cpp
+        src/extratoclientedialog.h src/extratoclientedialog.cpp
+        src/contasreceberjanela.h src/contasreceberjanela.cpp
         src/contaspagarjanela.h src/contaspagarjanela.cpp
         src/contapagardialogs.h src/contapagardialogs.cpp
         src/movimentacaocaixa.h src/movimentacaocaixa.cpp src/movimentacaocaixa.ui

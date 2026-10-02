@@ -1,4 +1,6 @@
 #include "venda.h"
+#include "operadores.h"
+#include "services/contasreceber_service.h"
 #include "ui_venda.h"
 #include "customdelegate.h"
 #include <QSqlQueryModel>
@@ -747,6 +749,25 @@ void venda::terminarPagamento()
     newVenda.troco          = portugues.toDouble(troco);
     newVenda.valorFinal     = portugues.toDouble(valor_final);
     newVenda.valorRecebido  = portugues.toDouble(recebido);
+
+    // venda a prazo (fiado): cliente identificado, ativo e dentro do limite de crédito
+    if (forma == "Prazo") {
+        ContasReceber_service receber;
+        auto prazo = receber.validarVendaPrazo(idClienteAtual, newVenda.valorFinal);
+        if (!prazo.ok && prazo.limiteExcedido) {
+            const auto resp = QMessageBox::question(this, "Limite de crédito",
+                prazo.msg + "\n\nLiberar esta venda acima do limite? (precisa do PIN do gerente)",
+                QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+            if (resp == QMessageBox::Yes && Operadores::exigirGerente(this, QStringLiteral("Liberar venda acima do limite")))
+                prazo = receber.validarVendaPrazo(idClienteAtual, newVenda.valorFinal, true);
+            else
+                return;
+        }
+        if (!prazo.ok) {
+            QMessageBox::warning(this, "Venda a prazo", prazo.msg);
+            return;
+        }
+    }
     // a venda fica amarrada à sessão do operador logado, não ao dono do caixa
     newVenda.idOperadorSessao = Sessao_service::instancia()->idOperador();
 

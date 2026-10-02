@@ -1965,6 +1965,85 @@ SchemaMigration_service::Resultado SchemaMigration_service::update() {
             qDebug() << "Migracao para versao 20 concluida.";
             break;
         }
+        case 20:
+        {
+            // versao 21: contas a receber (fiado / caderneta). Dados de crédito do cliente, dívidas lançadas
+            // à mão e seus pagamentos. O fiado do PDV continua em vendas2 "Prazo" + entradas_vendas.
+            if (!db.transaction()) {
+                qDebug() << "Error: unable to start transaction";
+                return {false, SchemaErro::ErroMigracao, "Erro ao iniciar migracao 21", dbSchemaVersion};
+            }
+            const bool pg21 = DatabaseConnection_service::isPostgres();
+            const QString pk21 = pg21 ? "SERIAL PRIMARY KEY" : "INTEGER PRIMARY KEY AUTOINCREMENT";
+            const QString ts21 = pg21 ? "TIMESTAMP" : "DATETIME";
+            const QString addCol21 = pg21 ? "ADD COLUMN IF NOT EXISTS" : "ADD COLUMN";
+
+            const QStringList comandos21 = {
+                "ALTER TABLE clientes " + addCol21 + " ativo INTEGER NOT NULL DEFAULT 1",
+                "ALTER TABLE clientes " + addCol21 + " limite_credito DECIMAL(10,2)",
+                "ALTER TABLE clientes " + addCol21 + " observacao TEXT",
+                "ALTER TABLE clientes " + addCol21 + " whatsapp TEXT",
+
+                "CREATE TABLE IF NOT EXISTS dividas ("
+                "  id " + pk21 + ","
+                "  id_cliente INTEGER NOT NULL,"
+                "  id_empresa INTEGER NOT NULL DEFAULT 1,"
+                "  data_compra TEXT NOT NULL,"
+                "  descricao TEXT NOT NULL,"
+                "  valor_total DECIMAL(10,2) NOT NULL,"
+                "  observacao TEXT,"
+                "  status TEXT NOT NULL DEFAULT 'ABERTA',"
+                "  motivo_cancelamento TEXT,"
+                "  id_operador_sessao INTEGER,"
+                "  criado_em TEXT NOT NULL)",
+
+                "CREATE TABLE IF NOT EXISTS pagamentos_divida ("
+                "  id " + pk21 + ","
+                "  id_divida INTEGER NOT NULL,"
+                "  data_pagamento TEXT NOT NULL,"
+                "  valor DECIMAL(10,2) NOT NULL,"
+                "  forma_pagamento TEXT NOT NULL,"
+                "  observacao TEXT,"
+                "  id_operador_sessao INTEGER,"
+                "  id_caixa INTEGER,"
+                "  cancelado INTEGER NOT NULL DEFAULT 0,"
+                "  motivo_cancelamento TEXT,"
+                "  cancelado_por INTEGER,"
+                "  cancelado_em TEXT,"
+                "  criado_em TEXT NOT NULL)",
+
+                "ALTER TABLE movimentacoes_caixa " + addCol21 + " id_pagamento_divida INTEGER",
+
+                "CREATE INDEX IF NOT EXISTS idx_dividas_cliente ON dividas(id_cliente, status)",
+                "CREATE INDEX IF NOT EXISTS idx_dividas_empresa ON dividas(id_empresa)",
+                "CREATE INDEX IF NOT EXISTS idx_pagamentos_divida ON pagamentos_divida(id_divida)",
+                "CREATE INDEX IF NOT EXISTS idx_mov_pagamento_divida ON movimentacoes_caixa(id_pagamento_divida)",
+                "CREATE INDEX IF NOT EXISTS idx_vendas2_cliente_prazo ON vendas2(id_cliente, forma_pagamento)"
+            };
+            for (const QString &sql : comandos21) {
+                QSqlQuery query(db);
+                if (!query.exec(sql)) {
+                    const QString texto = query.lastError().text();
+                    if (!pg21 && sql.startsWith("ALTER TABLE") &&
+                        texto.contains("duplicate column", Qt::CaseInsensitive))
+                        continue;
+                    qDebug() << "Erro migracao 21:" << texto << "SQL:" << sql;
+                    db.rollback();
+                    return {false, SchemaErro::ErroMigracao, "Erro na migracao 21 (contas a receber)", dbSchemaVersion};
+                }
+            }
+            if (!setSchemaVersion(21)) {
+                db.rollback();
+                return {false, SchemaErro::ErroMigracao, "Erro ao gravar versao 21", dbSchemaVersion};
+            }
+            if (!db.commit()) {
+                db.rollback();
+                return {false, SchemaErro::ErroMigracao, "Erro ao confirmar migracao 21", dbSchemaVersion};
+            }
+            dbSchemaVersion = 21;
+            qDebug() << "Migracao para versao 21 concluida.";
+            break;
+        }
 
         }
     }

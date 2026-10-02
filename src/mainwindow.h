@@ -138,6 +138,8 @@ private slots:
     // multi-empresa e contas a pagar
     void escolherEmpresaClicked();
     void abrirContasPagar() { contasPagarClicked(); }
+    void abrirContasReceber() { contasReceberClicked(); }
+    void contasReceberClicked(qlonglong idCliente = 0);
     void contasPagarClicked(const QString &statusInicial = QString());
     void atualizarIndicadorEmpresa();
     void atualizarAlertaContas();
@@ -177,7 +179,7 @@ private:
     void setarIconesJanela();
     //QModelIndex selected_index;
 
-    const int ultimaVersaoSchema = 20;
+    const int ultimaVersaoSchema = 21;
 
     // operador comum só entra em histórico, cadastro de operadores, configurações e
     // relatórios gerenciais depois de informar o PIN do gerente

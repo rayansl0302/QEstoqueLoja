@@ -164,6 +164,57 @@ Caixa_service::Resultado Caixa_service::registrarRecebimento(qlonglong idVenda, 
     return {true, "Recebimento lançado no caixa.", caixa.id};
 }
 
+Caixa_service::Resultado Caixa_service::registrarRecebimentoDivida(qlonglong idDivida, qlonglong idPagamento,
+                                                                   const QString &forma, double valor,
+                                                                   const QString &descricao)
+{
+    const CaixaDTO caixa = caixaAtual();
+    if (!caixa.aberto())
+        return {false, "Você não tem caixa aberto. Abra o caixa antes de receber."};
+
+    MovimentacaoCaixaDTO mov;
+    mov.idCaixa = caixa.id;
+    mov.tipo = "RECEBIMENTO";
+    mov.valor = arredondar2(valor);
+    mov.formaPagamento = forma;
+    mov.motivo = descricao.isEmpty() ? QString("Recebimento da dívida #%1").arg(idDivida) : descricao;
+    mov.idPagamentoDivida = idPagamento;
+    mov.idOperador = caixa.idOperador;
+    mov.idOperadorSessao = Sessao_service::instancia()->idOperador();
+
+    QString erro;
+    const qlonglong id = repo.inserirMovimentacao(mov, &erro);
+    if (id <= 0)
+        return {false, "Não foi possível lançar o recebimento no caixa: " + erro};
+    return {true, "Recebimento lançado no caixa.", caixa.id};
+}
+
+Caixa_service::Resultado Caixa_service::podeEstornarRecebimentoDivida(qlonglong idPagamento)
+{
+    const MovimentacaoCaixaDTO mov = repo.getMovimentacaoPorPagamentoDivida(idPagamento);
+    if (mov.id <= 0)
+        return {true, "Recebimento sem vínculo com caixa."};
+    const CaixaDTO caixa = repo.getPorId(mov.idCaixa);
+    if (!caixa.aberto())
+        return {false, QString("Este recebimento pertence ao caixa #%1, já fechado, e não pode ser estornado.")
+                           .arg(caixa.id)};
+    return {true, QString(), caixa.id};
+}
+
+Caixa_service::Resultado Caixa_service::estornarRecebimentoDivida(qlonglong idPagamento)
+{
+    const auto pode = podeEstornarRecebimentoDivida(idPagamento);
+    if (!pode.ok)
+        return pode;
+    const MovimentacaoCaixaDTO mov = repo.getMovimentacaoPorPagamentoDivida(idPagamento);
+    if (mov.id <= 0)
+        return {true, "Recebimento sem vínculo com caixa."};
+    QString erro;
+    if (!repo.deletarMovimentacao(mov.id, &erro))
+        return {false, "Não foi possível remover o recebimento do caixa: " + erro};
+    return {true, "Recebimento removido do caixa."};
+}
+
 Caixa_service::Resultado Caixa_service::podeRemoverRecebimento(qlonglong idEntradaVenda)
 {
     const MovimentacaoCaixaDTO mov = repo.getMovimentacaoPorEntradaVenda(idEntradaVenda);

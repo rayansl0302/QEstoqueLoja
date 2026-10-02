@@ -38,6 +38,7 @@ set(TEST_SOURCES
     services/test_entradanfe_service.cpp
     services/test_caixa_service.cpp
     services/test_empresa_contas.cpp
+    services/test_contasreceber_service.cpp
 )
 
 
@@ -58,6 +59,7 @@ add_executable(QEstoqueLojaTests
     services/test_entradanfe_service.h services/test_entradanfe_service.cpp
     services/test_caixa_service.h services/test_caixa_service.cpp
     services/test_empresa_contas.h services/test_empresa_contas.cpp
+    services/test_contasreceber_service.h services/test_contasreceber_service.cpp
 
 
 )

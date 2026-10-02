@@ -9,6 +9,10 @@
 #include <QDateTime>
 #include <QSqlError>
 #include "vendas.h"
+#include "contasreceberjanela.h"
+#include "operadores.h"
+#include "util/icones.h"
+#include <QPushButton>
 #include "mainwindow.h"
 #include "delegatehora.h"
 
@@ -17,6 +21,19 @@ Clientes::Clientes(QWidget *parent)
     , ui(new Ui::Clientes)
 {
     ui->setupUi(this);
+
+    // fiado do cliente: extrato, dívidas, pagamentos e limite de crédito
+    QPushButton *btnReceber = new QPushButton(QStringLiteral(" Contas a receber"), this);
+    btnReceber->setIcon(Icones::icone("wallet", QColor(Qt::white), 18));
+    btnReceber->setMinimumHeight(32);
+    btnReceber->setToolTip("Quanto o cliente deve, extrato, receber pagamento e limite de crédito");
+    connect(btnReceber, &QPushButton::clicked, this, [this]() {
+        ContasReceberJanela janela([this](const QString &acao) { return Operadores::exigirGerente(this, acao); },
+                                   IDCLIENTE, this);
+        janela.exec();
+        atualizarInfosSinal();
+    });
+    ui->actionLayout->addWidget(btnReceber);
 
 
     model = new QSqlQueryModel(this);

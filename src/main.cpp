@@ -19,6 +19,7 @@
     #include "services/operador_service.h"
     #include "services/sessao_service.h"
     #include "services/contaspagar_service.h"
+    #include "services/contasreceber_service.h"
 
     namespace {
 
@@ -116,6 +117,11 @@
         ContasPagar_service::definirAutorizador([]() {
             return Sessao_service::instancia()->autorizadoParaAdministrar();
         });
+        // Contas a receber: cancelar lançamento, estornar pagamento, inativar cliente, mexer no limite e
+        // liberar compra acima do limite só passam com gerente (ou elevação por PIN).
+        ContasReceber_service::definirAutorizador([]() {
+            return Sessao_service::instancia()->autorizadoParaAdministrar();
+        });
 
         MainWindow w;
 
@@ -163,6 +169,7 @@
                 else if (tela == "historico") slot = "historicoCaixaClicked";
                 else if (tela == "sangria") slot = "sangriaClicked";
                 else if (tela == "contas") slot = "abrirContasPagar";
+                else if (tela == "receber") slot = "abrirContasReceber";
                 else if (tela == "produto") slot = "on_Btn_AddProd_clicked";
                 else if (tela == "clientes") slot = "on_Btn_Clientes_clicked";
                 else if (tela == "vendas") slot = "on_Btn_Venda_clicked";

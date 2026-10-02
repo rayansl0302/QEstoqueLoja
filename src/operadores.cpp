@@ -205,6 +205,38 @@ void Operadores::on_Btn_Fechar_clicked()
     accept();
 }
 
+bool Operadores::exigirGerente(QWidget *parent, const QString &acao)
+{
+    Sessao_service *sessao = Sessao_service::instancia();
+    sessao->revalidar();           // a permissão pode ter mudado desde o login
+    if (!sessao->ativa())
+        return false;
+    if (sessao->sessao().gerente)
+        return true;
+
+    Operador_service serv;
+    if (!serv.gerentePinDefinido()) {
+        QMessageBox::warning(parent, "Acesso restrito",
+            acao + QStringLiteral(" é restrito a gerentes.\n"
+                                  "O PIN do gerente ainda não foi definido nesta instalação.\n"
+                                  "Peça a um gerente para definí-lo."));
+        return false;
+    }
+    bool ok = false;
+    const QString pin = QInputDialog::getText(parent, "PIN do gerente",
+        acao + QStringLiteral(" é restrito a gerentes.\nInforme o PIN do gerente:"),
+        QLineEdit::Password, QString(), &ok);
+    if (!ok)
+        return false;
+    const auto r = serv.validarGerentePin(pin);
+    if (!r.ok) {
+        QMessageBox::warning(parent, "Acesso restrito", r.msg);
+        return false;
+    }
+    sessao->concederElevacao(acao);
+    return true;
+}
+
 bool Operadores::autenticarGerente(QWidget *parent)
 {
     Operador_service serv;

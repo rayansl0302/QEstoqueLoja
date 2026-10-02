@@ -1,3 +1,6 @@
+#include "contasreceber_service.h"
+#include "../repository/contasreceber_repository.h"
+#include <QSet>
 #include "cliente_service.h"
 #include <QRegularExpression>
 
@@ -42,8 +45,28 @@ void Cliente_service::listarClientes(QSqlQueryModel *model){
     return cliRepo.listarClientes(model);
 }
 
+namespace {
+// nome para comparar duplicidade: sem diferenciar maiúsculas nem espaços sobrando
+QString nomeNormalizado(const QString &nome){ return nome.simplified().toLower(); }
+}
+
 Cliente_service::Resultado Cliente_service::deletarCliente(qlonglong id){
     if(id > 1){
+        // cliente com dívida aberta não se exclui (só se inativa); com histórico também não, para não
+        // deixar vendas e lançamentos sem dono
+        ContasReceber_service receber;
+        const double devido = receber.totalDevido(id);
+        if(devido > 0.004){
+            return {false, ClienteErro::QuebraDeRegra,
+                    QString("Este cliente tem dívida em aberto (R$ %1). Cliente com dívida não pode ser excluído: "
+                            "inative-o em Contas a receber.").arg(QString::number(devido, 'f', 2))};
+        }
+        ContasReceber_repository histRepo;
+        if(histRepo.quantidadeDeHistorico(id) > 0){
+            return {false, ClienteErro::QuebraDeRegra,
+                    "Este cliente tem histórico de compras. Para não perder o histórico, inative-o em Contas a "
+                    "receber em vez de excluir."};
+        }
         if(!cliRepo.deletarCliente(id)){
             return {false, ClienteErro::DeleteFalhou, "Ocorreu um erro ao deletar cliente"};
         }else{
@@ -70,6 +93,15 @@ Cliente_service::Resultado Cliente_service::inserirCliente(ClienteDTO cliente)
         r.erro = ClienteErro::CampoVazio;
         r.msg = "Nome é obrigatório.";
         return r;
+    }
+    // nome único, sem diferenciar maiúsculas nem espaços a mais
+    for (const ClienteDTO &outro : cliRepo.getListAllClientes()) {
+        if (nomeNormalizado(outro.nome) == nomeNormalizado(cliente.nome)) {
+            r.ok = false;
+            r.erro = ClienteErro::InsercaoInvalida;
+            r.msg = "Já existe um cliente com este nome.";
+            return r;
+        }
     }
 
     // 2️ CPF/CNPJ (opcional)
@@ -174,6 +206,14 @@ Cliente_service::Resultado Cliente_service::updateCliente(qlonglong id, ClienteD
         r.msg = "Nome é obrigatório.";
         return r;
     }
+    for (const ClienteDTO &outro : cliRepo.getListAllClientes()) {
+        if (outro.id != id && nomeNormalizado(outro.nome) == nomeNormalizado(cliente.nome)) {
+            r.ok = false;
+            r.erro = ClienteErro::InsercaoInvalida;
+            r.msg = "Já existe outro cliente com este nome.";
+            return r;
+        }
+    }
 
     // 2️ CPF/CNPJ (opcional)
     if (!cliente.cpf.trimmed().isEmpty()) {
@@ -259,7 +299,15 @@ QStringList Cliente_service::listarClientesParaCompleter()
 
     QList<ClienteDTO> clientes = cliRepo.getListAllClientes();
 
+    // cliente inativo não aparece para venda (o Consumidor, id 1, sempre aparece)
+    QSet<qlonglong> ativos;
+    ContasReceber_repository creditoRepo;
+    for(const ClienteCreditoDTO &c : creditoRepo.listarClientes(false))
+        ativos.insert(c.id);
+
     for(const ClienteDTO &cli : clientes){
+        if(cli.id > 1 && !ativos.contains(cli.id))
+            continue;
         lista << QString("%1 (ID: %2)").arg(cli.nome).arg(cli.id);
     }
 

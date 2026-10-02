@@ -253,8 +253,10 @@ qlonglong Caixa_repository::inserirMovimentacao(const MovimentacaoCaixaDTO &mov,
     }
     QSqlQuery query(db);
     query.prepare("INSERT INTO movimentacoes_caixa (id_caixa, tipo, valor, forma_pagamento, motivo, id_venda, "
-                  "id_entrada_venda, id_operador, id_operador_sessao, estornado, data_hora) "
-                  "VALUES (:caixa, :tipo, :valor, :forma, :motivo, :venda, :entrada, :op, :opsessao, :est, :agora)");
+                  "id_entrada_venda, id_pagamento_divida, id_operador, id_operador_sessao, estornado, data_hora) "
+                  "VALUES (:caixa, :tipo, :valor, :forma, :motivo, :venda, :entrada, :pagdiv, :op, :opsessao, :est, :agora)");
+    query.bindValue(":pagdiv", mov.idPagamentoDivida > 0 ? QVariant(mov.idPagamentoDivida)
+                                                          : QVariant(QMetaType(QMetaType::LongLong)));
     query.bindValue(":caixa", mov.idCaixa);
     query.bindValue(":tipo", mov.tipo);
     query.bindValue(":valor", mov.valor);
@@ -288,6 +290,21 @@ MovimentacaoCaixaDTO Caixa_repository::getMovimentacaoPorEntradaVenda(qlonglong 
                   "LEFT JOIN operadores o ON o.id = m.id_operador "
                   "WHERE m.id_entrada_venda = :id AND m.tipo = 'RECEBIMENTO' ORDER BY m.id DESC LIMIT 1");
     query.bindValue(":id", idEntradaVenda);
+    if (!query.exec() || !query.next())
+        return m;
+    return lerMovimentacao(query);
+}
+
+MovimentacaoCaixaDTO Caixa_repository::getMovimentacaoPorPagamentoDivida(qlonglong idPagamentoDivida)
+{
+    MovimentacaoCaixaDTO m;
+    if (!DatabaseConnection_service::open())
+        return m;
+    QSqlQuery query(db);
+    query.prepare("SELECT m.*, o.nome AS nome_operador FROM movimentacoes_caixa m "
+                  "LEFT JOIN operadores o ON o.id = m.id_operador "
+                  "WHERE m.id_pagamento_divida = :id AND m.tipo = 'RECEBIMENTO' ORDER BY m.id DESC LIMIT 1");
+    query.bindValue(":id", idPagamentoDivida);
     if (!query.exec() || !query.next())
         return m;
     return lerMovimentacao(query);
